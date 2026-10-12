@@ -1,0 +1,177 @@
+Verificacion de modelo EN SQLALCHEMY
+(desde  backend)
+uv run python -c "from app.models import Base; print(Base.metadata.tables.keys())"
+
+INSTALAR ALEMBIC
+uv add alembic
+uv run alembic --version
+
+inicializar
+uv run alembic init alembic
+
+se creo...
+
+backend/
+├── alembic/
+│   ├── versions/
+│   ├── env.py
+│   ├── README
+│   └── script.py.mako
+└── alembic.ini
+
+CONFIGURAR alembic.ini
+
+backend/alembic.ini y busca la línea:
+sqlalchemy.url = driver://user:pass@localhost/dbname (remplaza)
+remplaza por 
+sqlalchemy.url = postgresql://boe_user:boe_password@localhost:5432/boe_dev
+
+CONFIGURAR alembic/env.py
+Abre backend/alembic/env.py y reemplázalo por esto:
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
+
+from app.core.config import settings
+from app.models import Base
+
+# Config de Alembic
+config = context.config
+
+# Configurar logging
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+# URL de la base de datos desde settings
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+# Metadata de los modelos
+target_metadata = Base.metadata
+
+
+def run_migrations_offline() -> None:
+    """Correr migraciones en modo offline."""
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations_online() -> None:
+    """Correr migraciones en modo online."""
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
+
+CREAR app/core/config.py
+Crea el archivo backend/app/core/config.py:
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Configuración de la aplicación."""
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+    )
+
+    # Base de datos
+    DATABASE_URL: str = (
+        "postgresql://boe_user:boe_password@localhost:5432/boe_dev"
+    )
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # JWT
+    SECRET_KEY: str = "cambiar-en-produccion"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # App
+    APP_NAME: str = "BoE_Mpr"
+    APP_VERSION: str = "0.1.0"
+    DEBUG: bool = True
+
+
+settings = Settings()
+
+6. CREAR app/core/__init__.py
+bash
+mkdir -p backend/app/core
+touch backend/app/core/__init__.py
+
+CREAR .env
+Crea el archivo backend/.env:
+DATABASE_URL=postgresql://boe_user:boe_password@localhost:5432/boe_dev
+REDIS_URL=redis://localhost:6379/0
+SECRET_KEY=tu-secret-key-super-segura
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+DEBUG=True
+
+Asegúrate de que .env esté en .gitignore.***************************
+
+LEVANTAR POSTGRES
+Desde la raíz del proyecto:
+
+bash
+docker compose up -d postgres
+
+GENERAR LA PRIMERA MIGRACIÓN
+Desde backend/:
+
+bash
+uv run alembic revision --autogenerate -m "Fundacion"
+
+11. APLICAR LA MIGRACIÓN
+bash
+uv run alembic upgrade head
+
+Verifica que se aplicó:
+
+bash
+uv run alembic current
+
+VERIFICAR EN POSTGRES
+Conéctate a Postgres:
+
+bash
+docker compose exec postgres psql -U boe_user -d boe_dev
+
+\dt
+
+\q
+
+1	alembic revision --autogenerate -m "mensaje"	Genera migración automática
+2	alembic upgrade head	Aplica todas las migraciones
+3	alembic downgrade -1	Revierte la última migración
+4	alembic current	Muestra la migración actual
+5	alembic history	Muestra el historial de migraciones
+6	alembic heads	Muestra los heads actuales
+7	alembic stamp head	Marca como aplicada sin ejecutar

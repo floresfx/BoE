@@ -1,0 +1,377 @@
+MIDDLEWARE DE TENANT
+Módulo Fundación
+Versión: 1.0
+Fecha: 2026-10-10
+
+1. CONCEPTO
+El middleware de tenant es el mecanismo que hace SET search_path antes de cada consulta.
+
+Cuando un usuario hace una petición:
+
+text
+1. Usuario envía token JWT.
+    │
+    ▼
+2. Middleware lee el token.
+    │
+    ▼
+3. Middleware obtiene el tenant_id del usuario.
+    │
+    ▼
+4. Middleware obtiene el schema_name del tenant.
+    │
+    ▼
+5. Middleware ejecuta SET search_path TO tenant_xxx, public.
+    │
+    ▼
+6. Todas las queries van al schema correcto.
+    │
+    ▼
+7. Al terminar, se resetea el search_path.
+2. ESTRUCTURA DE ARCHIVOS
+text
+backend/
+└── app/
+    └── core/
+        ├── __init__.py
+        ├── config.py
+        ├── database.py
+        ├── security.py
+        └── tenant_context.py  ← nuevo
+3. app/core/tenant_context.py
+python
+"""Contexto de tenant para el manejo de schemas."""
+
+from contextvars import ContextVar
+
+# Variable de contexto para el schema del tenant
+tenant_schema: ContextVar[str | None] = ContextVar(
+    "tenant_schema", default=None
+)
+
+
+def set_tenant_schema(schema: str) -> None:
+    """Establece el schema del tenant en el contexto."""
+    tenant_schema.set(schema)
+
+
+def get_tenant_schema() -> str | None:
+    """Obtiene el schema del tenant del contexto."""
+    return tenant_schema.get()
+
+
+def clear_tenant_schema() -> None:
+    """Limpia el schema del tenant del contexto."""
+    tenant_schema.set(None)
+4. app/core/database.py (actualizado)
+python
+from collections.abc import Generator
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.core.config import settings
+from app.core.tenant_context import get_tenant_schema
+
+engine = create_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    echo=settings.DEBUG,
+)
+
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
+
+
+def get_db() -> Generator[Session, None, None]:
+    """Dependencia para obtener la sesión de base de datos.
+
+    Si hay un tenant en el contexto, hace SET search_path
+    para que las queries vayan a su schema.
+    """
+    db = SessionLocal()
+    try:
+        # Obtener schema del tenant desde el contexto
+        schema = get_tenant_schema()
+
+        if schema:
+            # Validar que el schema sea seguro (solo letras, números y guiones bajos)
+            if not schema.replace("_", "").isalnum():
+                raise ValueError(f"Schema inválido: {schema}")
+
+            # Hacer SET search_path
+            db.execute(text(f"SET search_path TO {schema}, public"))
+
+        yield db
+    finally:
+        db.close()
+5. app/api/deps.py (actualizado)
+python
+from uuid import UUID
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.security import decode_access_token
+from app.core.tenant_context import set_tenant_schema
+from app.models import Tenant, User
+
+security = HTTPBearer()
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    """Obtiene el usuario actual desde el token JWT."""
+    token = credentials.credentials
+    payload = decode_access_token(token)
+
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido o expirado",
+        )
+
+    user_id = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido",
+        )
+
+    user = db.query(User).filter(User.id == UUID(user_id)).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no encontrado",
+        )
+
+    if user.status != "activo":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuario no activo",
+        )
+
+    return user
+
+
+def get_current_tenant(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Tenant:
+    """Obtiene el tenant del usuario actual y establece el contexto."""
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+
+    if tenant is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant no encontrado",
+        )
+
+    if tenant.status != "activo":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant no activo",
+        )
+
+    # Establecer schema en el contexto
+    set_tenant_schema(tenant.schema_name)
+
+    return tenant
+6. CÓMO SE USA EN LOS ENDPOINTS
+Antes (sin middleware):
+
+python
+@router.get("/bundles")
+def list_bundles(db: Session = Depends(get_db)):
+    # No hay filtro por tenant
+    return db.query(Bundle).all()
+Ahora (con middleware):
+
+python
+@router.get("/bundles")
+def list_bundles(
+    db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),  # ← establece el search_path
+):
+    # El search_path ya está configurado
+    # Las queries van al schema del tenant
+    return db.query(Bundle).all()
+El endpoint no cambia. Solo agrega la dependencia get_current_tenant.
+
+7. PROBAR EL MIDDLEWARE
+7.1. Crear un bundle en el schema del tenant
+Primero, necesitas un endpoint que use el middleware. Por ahora, probémoslo con un script:
+
+backend/scripts/test_tenant.py:
+
+python
+"""Script para probar el middleware de tenant."""
+
+from sqlalchemy import text
+
+from app.core.database import SessionLocal
+from app.core.tenant_context import clear_tenant_schema, set_tenant_schema
+
+
+def test_tenant_schema():
+    """Prueba el SET search_path."""
+    db = SessionLocal()
+
+    try:
+        # 1. Sin tenant
+        result = db.execute(text("SHOW search_path"))
+        print(f"Sin tenant: {result.scalar()}")
+
+        # 2. Con tenant
+        set_tenant_schema("tenant_test123")
+        db.close()
+
+        db = SessionLocal()
+        db.execute(text("SET search_path TO tenant_test123, public"))
+        result = db.execute(text("SHOW search_path"))
+        print(f"Con tenant: {result.scalar()}")
+
+        # 3. Limpiar
+        clear_tenant_schema()
+        db.close()
+
+        db = SessionLocal()
+        result = db.execute(text("SHOW search_path"))
+        print(f"Sin tenant: {result.scalar()}")
+
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    test_tenant_schema()
+Ejecutar:
+
+bash
+uv run python scripts/test_tenant.py
+8. CREAR EL ESQUEMA DEL TENANT
+Cuando se crea un tenant, hay que crear su schema.
+
+app/services/tenant_service.py:
+
+python
+"""Servicio para manejar tenants."""
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.models import Tenant
+
+
+def create_tenant_schema(db: Session, tenant: Tenant) -> None:
+    """Crea el schema del tenant en Postgres."""
+    schema_name = tenant.schema_name
+
+    # Validar que el schema sea seguro
+    if not schema_name.replace("_", "").isalnum():
+        raise ValueError(f"Schema inválido: {schema_name}")
+
+    # Crear schema
+    db.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+    db.commit()
+
+
+def drop_tenant_schema(db: Session, tenant: Tenant) -> None:
+    """Elimina el schema del tenant."""
+    schema_name = tenant.schema_name
+
+    if not schema_name.replace("_", "").isalnum():
+        raise ValueError(f"Schema inválido: {schema_name}")
+
+    db.execute(text(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"))
+    db.commit()
+Actualizar el endpoint de crear tenant:
+
+python
+# app/api/v1/tenants.py
+
+from app.services.tenant_service import create_tenant_schema
+
+@router.post("", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
+def create_tenant(data: TenantCreate, db: Session = Depends(get_db)):
+    """Crea un nuevo tenant."""
+    # Verificar que el tax_id no exista
+    existing = db.query(Tenant).filter(Tenant.tax_id == data.tax_id).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya existe un tenant con ese tax_id",
+        )
+
+    # Generar schema_name
+    from uuid import uuid4
+
+    schema_name = f"tenant_{uuid4().hex[:16]}"
+
+    tenant = Tenant(
+        **data.model_dump(),
+        schema_name=schema_name,
+    )
+    db.add(tenant)
+    db.commit()
+    db.refresh(tenant)
+
+    # Crear el schema en Postgres
+    create_tenant_schema(db, tenant)
+
+    return TenantResponse.model_validate(tenant)
+9. VERIFICAR QUE EL SCHEMA SE CREÓ
+bash
+docker compose exec postgres psql -U boe_user -d boe_dev -c "\dn"
+Debe mostrar:
+
+text
+        List of schemas
+        Name        |  Owner
+--------------------+----------
+ public             | boe_user
+ tenant_a3f9c21b... | boe_user
+ tenant_b2c4d6e8... | boe_user
+Cada tenant tiene su propio schema.
+
+10. VERIFICAR QUE EL MIDDLEWARE FUNCIONA
+Prueba con un endpoint real:
+
+Crea un tenant (si no tienes).
+
+Crea un usuario.
+
+Haz login.
+
+Prueba un endpoint que use get_current_tenant.
+
+Pero necesitas un endpoint que use el schema del tenant. Por ahora, todos los endpoints usan public. Cuando crees el Módulo 2 (Recursos), usarán el schema del tenant.
+
+11. ESTRUCTURA FINAL
+text
+backend/
+├── app/
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── config.py
+│   │   ├── database.py
+│   │   ├── security.py
+│   │   └── tenant_context.py  ← nuevo
+│   ├── services/
+│   │   └── tenant_service.py  ← nuevo
+│   └── api/
+│       └── deps.py  ← actualizado
+└── scripts/
+    └── test_tenant.py  ← nuevo
+12. LA FRASE QUE LO RESUME
+El middleware lee el token, obtiene el tenant, obtiene el schema_name, y hace SET search_path. Las queries van al schema correcto. El endpoint no cambia. Solo agrega Depends(get_current_tenant). Cuando se crea un tenant, se crea su schema en Postgres.
+
+Fin del Middleware de Tenant.
+Versión 1.0 — 2026-10-10.

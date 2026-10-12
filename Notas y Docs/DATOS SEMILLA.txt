@@ -1,0 +1,455 @@
+DATOS SEMILLA
+Módulo Fundación
+Versión: 1.0
+Fecha: 2026-10-10
+
+ESTRUCTURA DE ARCHIVOS
+text
+backend/
+├── seeds/
+│   ├── __init__.py
+│   ├── run.py
+│   ├── verticals.py
+│   ├── plans.py
+│   ├── permissions.py
+│   └── profiles.py
+└── pyproject.toml
+1. seeds/__init__.py
+python
+# Vacío
+2. seeds/verticals.py
+python
+from sqlalchemy.orm import Session
+
+from app.models import Vertical
+
+VERTICALS = [
+    {"name": "Clínicas generales", "description": "Clínicas médicas generales"},
+    {"name": "Clínicas dentales", "description": "Consultorios odontológicos"},
+    {"name": "Panaderías", "description": "Panaderías y pastelerías"},
+    {"name": "Restaurantes", "description": "Restaurantes y servicios de comida"},
+    {"name": "Fabricantes", "description": "Empresas de manufactura"},
+    {"name": "Instituciones educativas", "description": "Colegios, academias, universidades"},
+    {"name": "Proyectos por encargo", "description": "Empresas de proyectos y eventos"},
+    {"name": "Empresas de limpieza", "description": "Servicios de limpieza"},
+    {"name": "Empresas de mantenimiento", "description": "Servicios de mantenimiento"},
+    {"name": "Empresas de transporte", "description": "Servicios de transporte y logística"},
+]
+
+
+def seed_verticals(db: Session) -> int:
+    """Crea los verticales iniciales."""
+    count = 0
+    for data in VERTICALS:
+        existing = db.query(Vertical).filter(Vertical.name == data["name"]).first()
+        if not existing:
+            db.add(Vertical(**data))
+            count += 1
+    db.commit()
+    return count
+3. seeds/plans.py
+python
+from sqlalchemy.orm import Session
+
+from app.models import Plan
+
+PLANS = [
+    {
+        "name": "MPR Base",
+        "description": "Plan base del MPR. 10 paquetes, 50 recursos, 3 usuarios.",
+        "price": 39.00,
+        "currency": "USD",
+        "features": {
+            "paquetes": 10,
+            "recursos": 50,
+            "usuarios": 3,
+            "inventario": "con lotes y caducidad",
+            "planificacion": "calendario + kanban",
+            "anexos": True,
+            "excepciones": True,
+            "costeo": "básico",
+            "ia": "básica",
+            "soporte": "email",
+        },
+        "limits": {
+            "paquetes": 10,
+            "recursos": 50,
+            "usuarios": 3,
+        },
+        "is_active": True,
+    },
+    {
+        "name": "MPR Plus",
+        "description": "Plan plus del MPR. Paquetes ilimitados, recursos ilimitados, 10 usuarios.",
+        "price": 79.00,
+        "currency": "USD",
+        "features": {
+            "paquetes": "ilimitados",
+            "recursos": "ilimitados",
+            "usuarios": 10,
+            "inventario": "con lotes y caducidad",
+            "planificacion": "calendario + kanban",
+            "anexos": True,
+            "excepciones": True,
+            "costeo": "completo",
+            "ia": "completa",
+            "soporte": "prioritario",
+        },
+        "limits": {
+            "paquetes": None,
+            "recursos": None,
+            "usuarios": 10,
+        },
+        "is_active": True,
+    },
+    {
+        "name": "Marketplace Gratuito",
+        "description": "Plan gratuito del Marketplace. 10 productos, 3 ventas/mes, 3 leads/mes.",
+        "price": 0.00,
+        "currency": "USD",
+        "features": {
+            "productos": 10,
+            "ventas_mes": 3,
+            "leads_mes": 3,
+            "diagnostico": "genérico",
+            "recomendaciones": "fijas",
+        },
+        "limits": {
+            "productos": 10,
+            "ventas_mes": 3,
+            "leads_mes": 3,
+        },
+        "is_active": True,
+    },
+    {
+        "name": "Marketplace Básico",
+        "description": "Plan básico del Marketplace. 100 productos, 20 ventas/mes, 10 leads/mes.",
+        "price": 19.00,
+        "currency": "USD",
+        "features": {
+            "productos": 100,
+            "ventas_mes": 20,
+            "leads_mes": 10,
+            "diagnostico": "específico",
+            "recomendaciones": "personalizadas",
+            "filtros": True,
+            "categorias": True,
+        },
+        "limits": {
+            "productos": 100,
+            "ventas_mes": 20,
+            "leads_mes": 10,
+        },
+        "is_active": True,
+    },
+    {
+        "name": "Marketplace Plus",
+        "description": "Plan plus del Marketplace. Productos ilimitados, 40 ventas/mes, 30 leads/mes.",
+        "price": 35.00,
+        "currency": "USD",
+        "features": {
+            "productos": "ilimitados",
+            "ventas_mes": 40,
+            "leads_mes": 30,
+            "diagnostico": "inteligencia de negocio",
+            "recomendaciones": "estratégicas",
+            "filtros": True,
+            "categorias": True,
+            "asistente": True,
+        },
+        "limits": {
+            "productos": None,
+            "ventas_mes": 40,
+            "leads_mes": 30,
+        },
+        "is_active": True,
+    },
+]
+
+
+def seed_plans(db: Session) -> int:
+    """Crea los planes iniciales."""
+    count = 0
+    for data in PLANS:
+        existing = db.query(Plan).filter(Plan.name == data["name"]).first()
+        if not existing:
+            db.add(Plan(**data))
+            count += 1
+    db.commit()
+    return count
+4. seeds/profiles.py
+python
+from sqlalchemy.orm import Session
+
+from app.models import Profile
+
+PROFILES = [
+    {"name": "Dueño", "description": "Dueño del negocio. Acceso total."},
+    {"name": "Administrador", "description": "Gestión diaria. Sin configuración crítica."},
+    {"name": "Empleado", "description": "Acceso limitado a solicitudes y consultas."},
+]
+
+
+def seed_profiles(db: Session) -> int:
+    """Crea los perfiles iniciales."""
+    count = 0
+    for data in PROFILES:
+        existing = db.query(Profile).filter(Profile.name == data["name"]).first()
+        if not existing:
+            db.add(Profile(**data))
+            count += 1
+    db.commit()
+    return count
+5. seeds/permissions.py
+python
+from sqlalchemy.orm import Session
+
+from app.models import Permission
+
+PERMISSIONS = [
+    # Bundle
+    {"module": "bundle", "action": "ver", "description": "Ver paquetes"},
+    {"module": "bundle", "action": "crear", "description": "Crear paquetes"},
+    {"module": "bundle", "action": "editar", "description": "Editar paquetes"},
+    {"module": "bundle", "action": "eliminar", "description": "Eliminar paquetes"},
+    {"module": "bundle", "action": "versionar", "description": "Versionar paquetes"},
+    {"module": "bundle", "action": "activar", "description": "Activar paquetes"},
+    {"module": "bundle", "action": "exportar", "description": "Exportar paquetes"},
+    {"module": "bundle", "action": "importar", "description": "Importar paquetes"},
+
+    # Inventory
+    {"module": "inventory", "action": "ver", "description": "Ver inventario"},
+    {"module": "inventory", "action": "crear", "description": "Crear inventario"},
+    {"module": "inventory", "action": "editar", "description": "Editar inventario"},
+    {"module": "inventory", "action": "eliminar", "description": "Eliminar inventario"},
+    {"module": "inventory", "action": "ajustar", "description": "Ajustar inventario"},
+    {"module": "inventory", "action": "transferir", "description": "Transferir inventario"},
+    {"module": "inventory", "action": "exportar", "description": "Exportar inventario"},
+    {"module": "inventory", "action": "importar", "description": "Importar inventario"},
+    {"module": "inventory", "action": "ver_costos", "description": "Ver costos"},
+    {"module": "inventory", "action": "ver_lotes", "description": "Ver lotes"},
+
+    # Request
+    {"module": "request", "action": "ver", "description": "Ver solicitudes"},
+    {"module": "request", "action": "crear", "description": "Crear solicitudes"},
+    {"module": "request", "action": "editar", "description": "Editar solicitudes"},
+    {"module": "request", "action": "eliminar", "description": "Eliminar solicitudes"},
+    {"module": "request", "action": "aprobar", "description": "Aprobar solicitudes"},
+    {"module": "request", "action": "rechazar", "description": "Rechazar solicitudes"},
+    {"module": "request", "action": "ejecutar", "description": "Ejecutar solicitudes"},
+    {"module": "request", "action": "exportar", "description": "Exportar solicitudes"},
+    {"module": "request", "action": "cancelar", "description": "Cancelar solicitudes"},
+
+    # Offer
+    {"module": "offer", "action": "ver", "description": "Ver ofertas"},
+    {"module": "offer", "action": "crear", "description": "Crear ofertas"},
+    {"module": "offer", "action": "editar", "description": "Editar ofertas"},
+    {"module": "offer", "action": "eliminar", "description": "Eliminar ofertas"},
+    {"module": "offer", "action": "exportar", "description": "Exportar ofertas"},
+    {"module": "offer", "action": "importar", "description": "Importar ofertas"},
+    {"module": "offer", "action": "ver_historial", "description": "Ver historial de precios"},
+
+    # Opportunity
+    {"module": "opportunity", "action": "ver", "description": "Ver oportunidades"},
+    {"module": "opportunity", "action": "crear", "description": "Crear oportunidades"},
+    {"module": "opportunity", "action": "editar", "description": "Editar oportunidades"},
+    {"module": "opportunity", "action": "eliminar", "description": "Eliminar oportunidades"},
+    {"module": "opportunity", "action": "aceptar", "description": "Aceptar oportunidades"},
+    {"module": "opportunity", "action": "descartar", "description": "Descartar oportunidades"},
+    {"module": "opportunity", "action": "ejecutar", "description": "Ejecutar oportunidades"},
+    {"module": "opportunity", "action": "exportar", "description": "Exportar oportunidades"},
+
+    # Tenant
+    {"module": "tenant", "action": "configurar", "description": "Configurar tenant"},
+    {"module": "tenant", "action": "ver_usuarios", "description": "Ver usuarios"},
+    {"module": "tenant", "action": "invitar_usuarios", "description": "Invitar usuarios"},
+    {"module": "tenant", "action": "gestionar_roles", "description": "Gestionar roles"},
+    {"module": "tenant", "action": "gestionar_permisos", "description": "Gestionar permisos"},
+    {"module": "tenant", "action": "ver_logs", "description": "Ver logs"},
+    {"module": "tenant", "action": "exportar_todo", "description": "Exportar todos los datos"},
+    {"module": "tenant", "action": "eliminar", "description": "Eliminar tenant"},
+]
+
+
+def seed_permissions(db: Session) -> int:
+    """Crea los permisos iniciales."""
+    count = 0
+    for data in PERMISSIONS:
+        existing = (
+            db.query(Permission)
+            .filter(
+                Permission.module == data["module"],
+                Permission.action == data["action"],
+            )
+            .first()
+        )
+        if not existing:
+            db.add(Permission(**data))
+            count += 1
+    db.commit()
+    return count
+6. seeds/run.py
+python
+"""Script para ejecutar los datos semilla."""
+
+from app.core.database import SessionLocal
+from seeds.permissions import seed_permissions
+from seeds.plans import seed_plans
+from seeds.profiles import seed_profiles
+from seeds.verticals import seed_verticals
+
+
+def run_seeds() -> None:
+    """Ejecuta todos los seeds."""
+    db = SessionLocal()
+    try:
+        print("🌱 Iniciando seeds...")
+
+        v = seed_verticals(db)
+        print(f"   ✅ Verticales: {v} creados")
+
+        p = seed_plans(db)
+        print(f"   ✅ Planes: {p} creados")
+
+        pr = seed_profiles(db)
+        print(f"   ✅ Perfiles: {pr} creados")
+
+        pe = seed_permissions(db)
+        print(f"   ✅ Permisos: {pe} creados")
+
+        print("🌱 Seeds completados")
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    run_seeds()
+7. EJECUTAR LOS SEEDS
+Desde backend/:
+
+bash
+uv run python -m seeds.run
+Debe mostrar:
+
+text
+🌱 Iniciando seeds...
+   ✅ Verticales: 10 creados
+   ✅ Planes: 5 creados
+   ✅ Perfiles: 3 creados
+   ✅ Permisos: 49 creados
+🌱 Seeds completados
+8. VERIFICAR EN POSTGRES
+bash
+docker compose exec postgres psql -U boe_user -d boe_dev -c "SELECT name FROM verticals;"
+Debe mostrar los 10 verticales.
+
+bash
+docker compose exec postgres psql -U boe_user -d boe_dev -c "SELECT name, price FROM plans;"
+Debe mostrar los 5 planes.
+
+bash
+docker compose exec postgres psql -U boe_user -d boe_dev -c "SELECT COUNT(*) FROM permissions;"
+Debe mostrar 49.
+
+9. AGREGAR AL pyproject.toml
+Para poder ejecutar python -m seeds.run:
+
+toml
+[tool.uv]
+package = true
+O simplemente asegúrate de que seeds/ esté en el PYTHONPATH.
+
+Si no funciona, ejecuta directamente:
+
+bash
+uv run python seeds/run.py
+10. CREAR UN ADMIN EN EL SEED (opcional)
+Si quieres tener un usuario Admin desde el inicio para probar:
+
+Crea seeds/admin.py:
+
+python
+from sqlalchemy.orm import Session
+
+from app.core.security import hash_password
+from app.models import Role, Tenant, User
+
+
+def seed_admin(db: Session) -> None:
+    """Crea un tenant y admin de prueba."""
+    # Verificar si ya existe
+    existing = db.query(Tenant).filter(Tenant.tax_id == "J-00000000-0").first()
+    if existing:
+        print("   ⚠️  Admin ya existe")
+        return
+
+    # Crear tenant
+    tenant = Tenant(
+        name="Tenant de Prueba",
+        tax_id="J-00000000-0",
+        tax_id_type="RIF",
+        admin_email="admin@test.com",
+        base_currency="USD",
+        timezone="America/Caracas",
+        country="Venezuela",
+        province="Miranda",
+        city="Caracas",
+        schema_name="tenant_test_admin",
+        status="activo",
+    )
+    db.add(tenant)
+    db.flush()
+
+    # Crear rol Admin
+    role = Role(
+        tenant_id=tenant.id,
+        name="Admin",
+        description="Administrador",
+        is_system=False,
+    )
+    db.add(role)
+    db.flush()
+
+    # Crear usuario Admin
+    user = User(
+        tenant_id=tenant.id,
+        email="admin@test.com",
+        password_hash=hash_password("admin123"),
+        first_name="Admin",
+        last_name="Test",
+        phone="04141234567",
+        phone_verified=True,
+        status="activo",
+    )
+    db.add(user)
+    db.commit()
+
+    print(f"   ✅ Admin creado: admin@test.com / admin123")
+Agrégalo a seeds/run.py:
+
+python
+from seeds.admin import seed_admin
+
+# Dentro de run_seeds():
+seed_admin(db)
+11. ESTRUCTURA FINAL
+text
+backend/
+├── seeds/
+│   ├── __init__.py
+│   ├── run.py
+│   ├── verticals.py
+│   ├── plans.py
+│   ├── permissions.py
+│   ├── profiles.py
+│   └── admin.py (opcional)
+└── pyproject.toml
+12. La frase que lo resume
+10 verticales. 5 planes (2 MPR + 3 Marketplace). 3 perfiles. 49 permisos. 1 admin de prueba (opcional). Ejecutas con uv run python -m seeds.run. Listo para probar los endpoints con datos reales.
+
+Fin de los Datos Semilla.
+Versión 1.0 — 2026-10-10.

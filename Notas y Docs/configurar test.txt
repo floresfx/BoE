@@ -1,0 +1,773 @@
+TESTS
+Módulo Fundación
+Versión: 1.0
+Fecha: 2026-10-10
+
+ESTRUCTURA DE ARCHIVOS
+text
+backend/
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_auth.py
+│   ├── test_tenants.py
+│   ├── test_users.py
+│   ├── test_roles.py
+│   ├── test_profiles.py
+│   ├── test_permissions.py
+│   ├── test_secure_devices.py
+│   ├── test_access_logs.py
+│   ├── test_verticals.py
+│   └── test_plans.py
+└── pyproject.toml
+1. INSTALAR DEPENDENCIAS DE TESTING
+Desde backend/:
+
+bash
+uv add --dev pytest pytest-asyncio httpx pytest-cov
+Agrega a pyproject.toml:
+
+toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+2. tests/__init__.py
+python
+# Vacío
+3. tests/conftest.py
+python
+from collections.abc import Generator
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.core.config import settings
+from app.core.database import get_db
+from app.core.security import hash_password
+from app.main import app
+from app.models import (
+    Base,
+    Permission,
+    Plan,
+    Profile,
+    Role,
+    Tenant,
+    User,
+    Vertical,
+)
+
+# Base de datos de test
+TEST_DATABASE_URL = settings.DATABASE_URL.replace("boe_dev", "boe_test")
+
+engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+TestingSessionLocal = sessionmaker(
+    autocommit=False, autoflush=False, bind=engine
+)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_database():
+    """Crea las tablas al inicio de la sesión de tests."""
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def db() -> Generator[Session, None, None]:
+    """Sesión de base de datos para tests."""
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = TestingSessionLocal(bind=connection)
+
+    yield session
+
+    session.close()
+    transaction.rollback()
+    connection.close()
+
+
+@pytest.fixture
+def client(db: Session) -> Generator[TestClient, None, None]:
+    """Cliente de test con la base de datos de test."""
+
+    def override_get_db():
+        try:
+            yield db
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def vertical(db: Session) -> Vertical:
+    """Crea un vertical de prueba."""
+    v = Vertical(name="Test Vertical", description="Test")
+    db.add(v)
+    db.commit()
+    db.refresh(v)
+    return v
+
+
+@pytest.fixture
+def plan(db: Session) -> Plan:
+    """Crea un plan de prueba."""
+    p = Plan(
+        name="Test Plan",
+        description="Test",
+        price=39.00,
+        currency="USD",
+        is_active=True,
+    )
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    return p
+
+
+@pytest.fixture
+def profile(db: Session) -> Profile:
+    """Crea un perfil de prueba."""
+    p = Profile(name="Test Profile", description="Test")
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    return p
+
+
+@pytest.fixture
+def permission(db: Session) -> Permission:
+    """Crea un permiso de prueba."""
+    p = Permission(module="test", action="ver", description="Test")
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    return p
+
+
+@pytest.fixture
+def tenant(db: Session, vertical: Vertical, plan: Plan) -> Tenant:
+    """Crea un tenant de prueba."""
+    t = Tenant(
+        name="Test Tenant",
+        tax_id="J-99999999-9",
+        tax_id_type="RIF",
+        admin_email="admin@test.com",
+        vertical_id=vertical.id,
+        plan_id=plan.id,
+        base_currency="USD",
+        timezone="America/Caracas",
+        country="Venezuela",
+        province="Miranda",
+        city="Caracas",
+        schema_name="tenant_test123",
+        status="activo",
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+    return t
+
+
+@pytest.fixture
+def user(db: Session, tenant: Tenant) -> User:
+    """Crea un usuario de prueba."""
+    u = User(
+        tenant_id=tenant.id,
+        email="test@test.com",
+        password_hash=hash_password("password123"),
+        first_name="Test",
+        last_name="User",
+        phone="04141234567",
+        phone_verified=True,
+        status="activo",
+    )
+    db.add(u)
+    db.commit()
+    db.refresh(u)
+    return u
+
+
+@pytest.fixture
+def auth_headers(client: TestClient, user: User) -> dict:
+    """Headers con token JWT del usuario de prueba."""
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "test@test.com", "password": "password123"},
+    )
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+4. tests/test_auth.py
+python
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app.models import User
+
+
+def test_login_exitoso(client: TestClient, user: User):
+    """Test: login con credenciales correctas."""
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "test@test.com", "password": "password123"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert data["user"]["email"] == "test@test.com"
+
+
+def test_login_password_incorrecta(client: TestClient, user: User):
+    """Test: login con password incorrecta."""
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "test@test.com", "password": "wrongpassword"},
+    )
+    assert response.status_code == 401
+    assert "Credenciales inválidas" in response.json()["detail"]
+
+
+def test_login_email_no_existe(client: TestClient):
+    """Test: login con email que no existe."""
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "noexiste@test.com", "password": "password123"},
+    )
+    assert response.status_code == 401
+
+
+def test_login_usuario_inactivo(client: TestClient, user: User, db: Session):
+    """Test: login con usuario inactivo."""
+    user.status = "inactivo"
+    db.commit()
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "test@test.com", "password": "password123"},
+    )
+    assert response.status_code == 403
+
+
+def test_get_me(client: TestClient, auth_headers: dict, user: User):
+    """Test: obtener usuario actual."""
+    response = client.get("/api/v1/auth/me", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json()["email"] == "test@test.com"
+
+
+def test_get_me_sin_token(client: TestClient):
+    """Test: obtener usuario actual sin token."""
+    response = client.get("/api/v1/auth/me")
+    assert response.status_code == 403
+5. tests/test_verticals.py
+python
+from fastapi.testclient import TestClient
+
+from app.models import Vertical
+
+
+def test_list_verticals_vacio(client: TestClient):
+    """Test: listar verticales cuando no hay."""
+    response = client.get("/api/v1/verticals")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_create_vertical(client: TestClient):
+    """Test: crear un vertical."""
+    response = client.post(
+        "/api/v1/verticals",
+        json={
+            "name": "Clínica general",
+            "description": "Clínicas generales",
+            "is_active": True,
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "Clínica general"
+    assert "id" in data
+
+
+def test_get_vertical(client: TestClient, vertical: Vertical):
+    """Test: obtener un vertical por ID."""
+    response = client.get(f"/api/v1/verticals/{vertical.id}")
+    assert response.status_code == 200
+    assert response.json()["name"] == vertical.name
+
+
+def test_get_vertical_no_existe(client: TestClient):
+    """Test: obtener un vertical que no existe."""
+    response = client.get(
+        "/api/v1/verticals/00000000-0000-0000-0000-000000000000"
+    )
+    assert response.status_code == 404
+
+
+def test_update_vertical(client: TestClient, vertical: Vertical):
+    """Test: actualizar un vertical."""
+    response = client.put(
+        f"/api/v1/verticals/{vertical.id}",
+        json={"name": "Clínica dental"},
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "Clínica dental"
+6. tests/test_tenants.py
+python
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app.models import Tenant, Vertical
+
+
+def test_create_tenant(client: TestClient, vertical: Vertical):
+    """Test: crear un tenant."""
+    response = client.post(
+        "/api/v1/tenants",
+        json={
+            "name": "Clínica San José",
+            "tax_id": "J-12345678-9",
+            "tax_id_type": "RIF",
+            "admin_email": "admin@clinica.com",
+            "vertical_id": str(vertical.id),
+            "base_currency": "USD",
+            "timezone": "America/Caracas",
+            "country": "Venezuela",
+            "province": "Miranda",
+            "city": "Caracas",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "Clínica San José"
+    assert data["tax_id"] == "J-12345678-9"
+
+
+def test_create_tenant_tax_id_duplicado(
+    client: TestClient, tenant: Tenant, vertical: Vertical
+):
+    """Test: crear tenant con tax_id duplicado."""
+    response = client.post(
+        "/api/v1/tenants",
+        json={
+            "name": "Otro Tenant",
+            "tax_id": tenant.tax_id,
+            "tax_id_type": "RIF",
+            "admin_email": "admin@otro.com",
+            "vertical_id": str(vertical.id),
+            "country": "Venezuela",
+        },
+    )
+    assert response.status_code == 400
+
+
+def test_list_tenants(client: TestClient, tenant: Tenant):
+    """Test: listar tenants."""
+    response = client.get("/api/v1/tenants")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] >= 1
+    assert len(data["items"]) >= 1
+
+
+def test_get_tenant(client: TestClient, tenant: Tenant):
+    """Test: obtener tenant por ID."""
+    response = client.get(f"/api/v1/tenants/{tenant.id}")
+    assert response.status_code == 200
+    assert response.json()["name"] == tenant.name
+
+
+def test_update_tenant(client: TestClient, tenant: Tenant):
+    """Test: actualizar tenant."""
+    response = client.put(
+        f"/api/v1/tenants/{tenant.id}",
+        json={"name": "Clínica Actualizada"},
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "Clínica Actualizada"
+7. tests/test_users.py
+python
+from fastapi.testclient import TestClient
+
+from app.models import Tenant, User
+
+
+def test_create_user(client: TestClient, tenant: Tenant):
+    """Test: crear un usuario."""
+    response = client.post(
+        "/api/v1/users",
+        json={
+            "tenant_id": str(tenant.id),
+            "email": "nuevo@test.com",
+            "password": "password123",
+            "first_name": "Nuevo",
+            "last_name": "Usuario",
+            "phone": "04141234567",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["email"] == "nuevo@test.com"
+    assert data["first_name"] == "Nuevo"
+
+
+def test_create_user_email_duplicado(
+    client: TestClient, tenant: Tenant, user: User
+):
+    """Test: crear usuario con email duplicado en el mismo tenant."""
+    response = client.post(
+        "/api/v1/users",
+        json={
+            "tenant_id": str(tenant.id),
+            "email": user.email,
+            "password": "password123",
+            "first_name": "Otro",
+            "last_name": "Usuario",
+        },
+    )
+    assert response.status_code == 400
+
+
+def test_list_users(client: TestClient, user: User):
+    """Test: listar usuarios."""
+    response = client.get("/api/v1/users")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] >= 1
+
+
+def test_list_users_por_tenant(client: TestClient, tenant: Tenant, user: User):
+    """Test: listar usuarios filtrados por tenant."""
+    response = client.get(f"/api/v1/users?tenant_id={tenant.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] >= 1
+
+
+def test_get_user(client: TestClient, user: User):
+    """Test: obtener usuario por ID."""
+    response = client.get(f"/api/v1/users/{user.id}")
+    assert response.status_code == 200
+    assert response.json()["email"] == user.email
+
+
+def test_update_user(client: TestClient, user: User):
+    """Test: actualizar usuario."""
+    response = client.put(
+        f"/api/v1/users/{user.id}",
+        json={"first_name": "Actualizado"},
+    )
+    assert response.status_code == 200
+    assert response.json()["first_name"] == "Actualizado"
+8. tests/test_roles.py
+python
+from fastapi.testclient import TestClient
+
+from app.models import Permission, Role, Tenant
+
+
+def test_create_role(client: TestClient, tenant: Tenant):
+    """Test: crear un rol."""
+    response = client.post(
+        "/api/v1/roles",
+        json={
+            "tenant_id": str(tenant.id),
+            "name": "Admin",
+            "description": "Administrador",
+            "permission_ids": [],
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "Admin"
+
+
+def test_create_role_con_permisos(
+    client: TestClient, tenant: Tenant, permission: Permission
+):
+    """Test: crear rol con permisos."""
+    response = client.post(
+        "/api/v1/roles",
+        json={
+            "tenant_id": str(tenant.id),
+            "name": "Editor",
+            "description": "Editor",
+            "permission_ids": [str(permission.id)],
+        },
+    )
+    assert response.status_code == 201
+
+
+def test_list_roles(client: TestClient, tenant: Tenant):
+    """Test: listar roles."""
+    response = client.get(f"/api/v1/roles?tenant_id={tenant.id}")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+def test_update_role(client: TestClient, tenant: Tenant):
+    """Test: actualizar rol."""
+    # Crear rol primero
+    create_response = client.post(
+        "/api/v1/roles",
+        json={
+            "tenant_id": str(tenant.id),
+            "name": "Lector",
+            "description": "Lector",
+            "permission_ids": [],
+        },
+    )
+    role_id = create_response.json()["id"]
+
+    # Actualizar
+    response = client.put(
+        f"/api/v1/roles/{role_id}",
+        json={"description": "Lector actualizado"},
+    )
+    assert response.status_code == 200
+    assert response.json()["description"] == "Lector actualizado"
+9. tests/test_profiles.py
+python
+from fastapi.testclient import TestClient
+
+from app.models import Profile
+
+
+def test_create_profile(client: TestClient):
+    """Test: crear un perfil."""
+    response = client.post(
+        "/api/v1/profiles",
+        json={"name": "Dueño", "description": "Dueño del negocio"},
+    )
+    assert response.status_code == 201
+    assert response.json()["name"] == "Dueño"
+
+
+def test_list_profiles(client: TestClient, profile: Profile):
+    """Test: listar perfiles."""
+    response = client.get("/api/v1/profiles")
+    assert response.status_code == 200
+    assert len(response.json()) >= 1
+
+
+def test_update_profile(client: TestClient, profile: Profile):
+    """Test: actualizar perfil."""
+    response = client.put(
+        f"/api/v1/profiles/{profile.id}",
+        json={"description": "Actualizado"},
+    )
+    assert response.status_code == 200
+    assert response.json()["description"] == "Actualizado"
+10. tests/test_permissions.py
+python
+from fastapi.testclient import TestClient
+
+from app.models import Permission
+
+
+def test_create_permission(client: TestClient):
+    """Test: crear un permiso."""
+    response = client.post(
+        "/api/v1/permissions",
+        json={
+            "module": "bundle",
+            "action": "crear",
+            "description": "Crear paquetes",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["module"] == "bundle"
+
+
+def test_list_permissions(client: TestClient, permission: Permission):
+    """Test: listar permisos."""
+    response = client.get("/api/v1/permissions")
+    assert response.status_code == 200
+    assert len(response.json()) >= 1
+
+
+def test_list_permissions_por_modulo(client: TestClient, permission: Permission):
+    """Test: listar permisos filtrados por módulo."""
+    response = client.get("/api/v1/permissions?module=test")
+    assert response.status_code == 200
+11. tests/test_plans.py
+python
+from fastapi.testclient import TestClient
+
+from app.models import Plan
+
+
+def test_create_plan(client: TestClient):
+    """Test: crear un plan."""
+    response = client.post(
+        "/api/v1/plans",
+        json={
+            "name": "MPR Base",
+            "description": "Plan base",
+            "price": 39.00,
+            "currency": "USD",
+            "features": {"paquetes": 10},
+            "limits": {"usuarios": 3},
+            "is_active": True,
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["name"] == "MPR Base"
+
+
+def test_list_plans(client: TestClient, plan: Plan):
+    """Test: listar planes."""
+    response = client.get("/api/v1/plans")
+    assert response.status_code == 200
+    assert len(response.json()) >= 1
+
+
+def test_update_plan(client: TestClient, plan: Plan):
+    """Test: actualizar plan."""
+    response = client.put(
+        f"/api/v1/plans/{plan.id}",
+        json={"price": 49.00},
+    )
+    assert response.status_code == 200
+    assert float(response.json()["price"]) == 49.00
+12. tests/test_secure_devices.py
+python
+from fastapi.testclient import TestClient
+
+from app.models import User
+
+
+def test_create_device(client: TestClient, auth_headers: dict):
+    """Test: crear un dispositivo seguro."""
+    response = client.post(
+        "/api/v1/secure-devices",
+        headers=auth_headers,
+        json={
+            "fingerprint": "device-fingerprint-1",
+            "ip": "192.168.1.1",
+        },
+    )
+    assert response.status_code == 201
+
+
+def test_create_device_maximo(client: TestClient, auth_headers: dict):
+    """Test: no permitir más de 2 dispositivos."""
+    # Crear 2
+    for i in range(2):
+        client.post(
+            "/api/v1/secure-devices",
+            headers=auth_headers,
+            json={"fingerprint": f"fp-{i}", "ip": "192.168.1.1"},
+        )
+
+    # Intentar crear el tercero
+    response = client.post(
+        "/api/v1/secure-devices",
+        headers=auth_headers,
+        json={"fingerprint": "fp-3", "ip": "192.168.1.1"},
+    )
+    assert response.status_code == 400
+
+
+def test_list_devices(client: TestClient, auth_headers: dict):
+    """Test: listar dispositivos."""
+    response = client.get("/api/v1/secure-devices", headers=auth_headers)
+    assert response.status_code == 200
+
+
+def test_delete_device(client: TestClient, auth_headers: dict):
+    """Test: eliminar un dispositivo."""
+    # Crear
+    create_response = client.post(
+        "/api/v1/secure-devices",
+        headers=auth_headers,
+        json={"fingerprint": "fp-delete", "ip": "192.168.1.1"},
+    )
+    device_id = create_response.json()["id"]
+
+    # Eliminar
+    response = client.delete(
+        f"/api/v1/secure-devices/{device_id}",
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+13. tests/test_access_logs.py
+python
+from fastapi.testclient import TestClient
+
+from app.models import User
+
+
+def test_list_access_logs(client: TestClient, auth_headers: dict):
+    """Test: listar logs de acceso."""
+    response = client.get("/api/v1/access-logs", headers=auth_headers)
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+14. EJECUTAR LOS TESTS
+14.1. Crear la base de datos de test
+Desde backend/:
+
+bash
+docker compose exec postgres psql -U boe_user -d boe_dev -c "CREATE DATABASE boe_test;"
+14.2. Ejecutar todos los tests
+bash
+uv run pytest
+14.3. Ejecutar con cobertura
+bash
+uv run pytest --cov=app --cov-report=html
+Abre htmlcov/index.html en el navegador para ver la cobertura.
+
+14.4. Ejecutar un archivo específico
+bash
+uv run pytest tests/test_auth.py
+14.5. Ejecutar un test específico
+bash
+uv run pytest tests/test_auth.py::test_login_exitoso
+15. RESULTADO ESPERADO
+text
+tests/test_auth.py::test_login_exitoso PASSED
+tests/test_auth.py::test_login_password_incorrecta PASSED
+tests/test_auth.py::test_login_email_no_existe PASSED
+tests/test_auth.py::test_login_usuario_inactivo PASSED
+tests/test_auth.py::test_get_me PASSED
+tests/test_auth.py::test_get_me_sin_token PASSED
+tests/test_verticals.py::test_list_verticals_vacio PASSED
+tests/test_verticals.py::test_create_vertical PASSED
+tests/test_verticals.py::test_get_vertical PASSED
+tests/test_verticals.py::test_get_vertical_no_existe PASSED
+tests/test_verticals.py::test_update_vertical PASSED
+...
+========== 30+ passed in 5.00s ==========
+16. ESTRUCTURA FINAL
+text
+backend/
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_auth.py
+│   ├── test_tenants.py
+│   ├── test_users.py
+│   ├── test_roles.py
+│   ├── test_profiles.py
+│   ├── test_permissions.py
+│   ├── test_secure_devices.py
+│   ├── test_access_logs.py
+│   ├── test_verticals.py
+│   └── test_plans.py
+└── pyproject.toml
+17. La frase que lo resume
+Tests con pytest. Fixtures en conftest.py. Base de datos de test separada. Cubren auth, tenants, users, roles, profiles, permissions, devices, logs, verticals, plans. Ejecutas con uv run pytest. Cobertura con --cov=app.
+
+Fin de los Tests.
+Versión 1.0 — 2026-10-10

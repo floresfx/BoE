@@ -1,0 +1,43 @@
+[project]
+name = "boe-mpr"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "alembic",
+    "pydantic",
+    "pydantic-settings",
+    "psycopg2-binary",
+    "redis",
+    "celery",
+    "python-jose[cryptography]",
+    "bcrypt",
+    "python-multipart",
+    "psycopg[binary]",
+    "email-validator>=2.3.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+
+[tool.uv]
+package = true

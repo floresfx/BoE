@@ -1,0 +1,577 @@
+SCHEMAS EN PYDANTIC
+Módulo Fundación
+Versión: 1.0
+Fecha: 2026-10-10
+
+ESTRUCTURA DE ARCHIVOS
+text
+backend/
+└── app/
+    └── schemas/
+        ├── __init__.py
+        ├── common.py
+        ├── tenant.py
+        ├── user.py
+        ├── role.py
+        ├── profile.py
+        ├── permission.py
+        ├── secure_device.py
+        ├── access_log.py
+        ├── vertical.py
+        └── plan.py
+1. app/schemas/common.py
+python
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
+
+
+class BaseSchema(BaseModel):
+    """Schema base para todos los schemas."""
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TimestampSchema(BaseSchema):
+    """Schema con timestamps."""
+    created_at: datetime
+    updated_at: datetime
+
+
+class UUIDResponse(BaseSchema):
+    """Respuesta con solo UUID."""
+    id: UUID
+
+
+class MessageResponse(BaseSchema):
+    """Respuesta con mensaje."""
+    message: str
+
+
+class ErrorResponse(BaseSchema):
+    """Respuesta de error."""
+    detail: str
+2. app/schemas/tenant.py
+python
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, Field
+
+from app.schemas.common import BaseSchema
+
+
+class TenantBase(BaseModel):
+    """Campos base del tenant."""
+    name: str = Field(..., min_length=1, max_length=255)
+    tax_id: str = Field(..., min_length=1, max_length=50)
+    tax_id_type: str = Field(..., min_length=1, max_length=20)
+    admin_email: EmailStr
+    base_currency: str = Field(default="USD", max_length=10)
+    timezone: str = Field(default="America/Caracas", max_length=50)
+    country: str = Field(..., min_length=1, max_length=100)
+    province: str | None = Field(default=None, max_length=100)
+    city: str | None = Field(default=None, max_length=100)
+
+
+class TenantCreate(TenantBase):
+    """Schema para crear un tenant."""
+    vertical_id: UUID | None = None
+    plan_id: UUID | None = None
+
+
+class TenantUpdate(BaseModel):
+    """Schema para actualizar un tenant."""
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    tax_id: str | None = Field(default=None, min_length=1, max_length=50)
+    tax_id_type: str | None = Field(default=None, min_length=1, max_length=20)
+    admin_email: EmailStr | None = None
+    base_currency: str | None = Field(default=None, max_length=10)
+    timezone: str | None = Field(default=None, max_length=50)
+    country: str | None = Field(default=None, min_length=1, max_length=100)
+    province: str | None = Field(default=None, max_length=100)
+    city: str | None = Field(default=None, max_length=100)
+    vertical_id: UUID | None = None
+    plan_id: UUID | None = None
+    status: str | None = None
+
+
+class TenantResponse(TenantBase):
+    """Schema de respuesta del tenant."""
+    id: UUID
+    vertical_id: UUID | None
+    plan_id: UUID | None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class TenantListResponse(BaseSchema):
+    """Lista de tenants."""
+    items: list[TenantResponse]
+    total: int
+3. app/schemas/user.py
+python
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, Field
+
+from app.schemas.common import BaseSchema
+
+
+class UserBase(BaseModel):
+    """Campos base del usuario."""
+    email: EmailStr
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    phone: str | None = Field(default=None, max_length=50)
+
+
+class UserCreate(UserBase):
+    """Schema para crear un usuario."""
+    password: str = Field(..., min_length=8, max_length=100)
+    tenant_id: UUID
+
+
+class UserUpdate(BaseModel):
+    """Schema para actualizar un usuario."""
+    email: EmailStr | None = None
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
+    phone: str | None = Field(default=None, max_length=50)
+    status: str | None = None
+
+
+class UserResponse(UserBase):
+    """Schema de respuesta del usuario."""
+    id: UUID
+    tenant_id: UUID
+    phone_verified: bool
+    status: str
+    last_login_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class UserListResponse(BaseSchema):
+    """Lista de usuarios."""
+    items: list[UserResponse]
+    total: int
+
+
+class UserLogin(BaseModel):
+    """Schema para login."""
+    email: EmailStr
+    password: str
+
+
+class UserLoginResponse(BaseSchema):
+    """Respuesta del login."""
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+4. app/schemas/role.py
+python
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from app.schemas.common import BaseSchema
+
+
+class RoleBase(BaseModel):
+    """Campos base del rol."""
+    name: str = Field(..., min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class RoleCreate(RoleBase):
+    """Schema para crear un rol."""
+    tenant_id: UUID | None = None
+    permission_ids: list[UUID] = []
+
+
+class RoleUpdate(BaseModel):
+    """Schema para actualizar un rol."""
+    name: str | None = Field(default=None, min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+    permission_ids: list[UUID] | None = None
+
+
+class RoleResponse(RoleBase):
+    """Schema de respuesta del rol."""
+    id: UUID
+    tenant_id: UUID | None
+    is_system: bool
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+
+
+
+from pydantic import BaseModel, Field
+
+from app.schemas.common import BaseSchema
+
+
+class ProfileBase(BaseModel):
+    """Campos base del perfil."""
+    name: str = Field(..., min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class ProfileCreate(ProfileBase):
+    """Schema para crear un perfil."""
+    pass
+
+
+class ProfileUpdate(BaseModel):
+    """Schema para actualizar un perfil."""
+    name: str | None = Field(default=None, min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class ProfileResponse(ProfileBase):
+    """Schema de respuesta del perfil."""
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+6. app/schemas/permission.py
+python
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from app.schemas.common import BaseSchema
+
+
+class PermissionBase(BaseModel):
+    """Campos base del permiso."""
+    module: str = Field(..., min_length=1, max_length=50)
+    action: str = Field(..., min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class PermissionCreate(PermissionBase):
+    """Schema para crear un permiso."""
+    pass
+
+
+class PermissionUpdate(BaseModel):
+    """Schema para actualizar un permiso."""
+    module: str | None = Field(default=None, min_length=1, max_length=50)
+    action: str | None = Field(default=None, min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class PermissionResponse(PermissionBase):
+    """Schema de respuesta del permiso."""
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+7. app/schemas/secure_device.py
+python
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from app.schemas.common import BaseSchema
+
+
+class SecureDeviceBase(BaseModel):
+    """Campos base del dispositivo."""
+    fingerprint: str = Field(..., min_length=1, max_length=255)
+    ip: str | None = Field(default=None, max_length=50)
+
+
+class SecureDeviceCreate(SecureDeviceBase):
+    """Schema para crear un dispositivo."""
+    pass
+
+
+class SecureDeviceResponse(SecureDeviceBase):
+    """Schema de respuesta del dispositivo."""
+    id: UUID
+    user_id: UUID
+    last_used_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+8. app/schemas/access_log.py
+python
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from app.schemas.common import BaseSchema
+
+
+class AccessLogBase(BaseModel):
+    """Campos base del log."""
+    event: str = Field(..., min_length=1, max_length=50)
+    ip: str | None = Field(default=None, max_length=50)
+    user_agent: str | None = Field(default=None, max_length=500)
+
+
+class AccessLogCreate(AccessLogBase):
+    """Schema para crear un log."""
+    user_id: UUID
+    tenant_id: UUID
+
+
+class AccessLogResponse(AccessLogBase):
+    """Schema de respuesta del log."""
+    id: UUID
+    user_id: UUID
+    tenant_id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+9. app/schemas/vertical.py
+python
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from app.schemas.common import BaseSchema
+
+
+class VerticalBase(BaseModel):
+    """Campos base del vertical."""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=255)
+    is_active: bool = True
+
+
+class VerticalCreate(VerticalBase):
+    """Schema para crear un vertical."""
+    pass
+
+
+class VerticalUpdate(BaseModel):
+    """Schema para actualizar un vertical."""
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=255)
+    is_active: bool | None = None
+
+
+class VerticalResponse(VerticalBase):
+    """Schema de respuesta del vertical."""
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+10. app/schemas/plan.py
+python
+from datetime import datetime
+from decimal import Decimal
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from app.schemas.common import BaseSchema
+
+
+class PlanBase(BaseModel):
+    """Campos base del plan."""
+    name: str = Field(..., min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+    price: Decimal = Field(..., ge=0)
+    currency: str = Field(default="USD", max_length=10)
+    features: dict | None = None
+    limits: dict | None = None
+    is_active: bool = True
+
+
+class PlanCreate(PlanBase):
+    """Schema para crear un plan."""
+    pass
+
+
+class PlanUpdate(BaseModel):
+    """Schema para actualizar un plan."""
+    name: str | None = Field(default=None, min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+    price: Decimal | None = Field(default=None, ge=0)
+    currency: str | None = Field(default=None, max_length=10)
+    features: dict | None = None
+    limits: dict | None = None
+    is_active: bool | None = None
+
+
+class PlanResponse(PlanBase):
+    """Schema de respuesta del plan."""
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+11. app/schemas/__init__.py
+python
+from app.schemas.access_log import (
+    AccessLogCreate,
+    AccessLogResponse,
+)
+from app.schemas.common import (
+    BaseSchema,
+    ErrorResponse,
+    MessageResponse,
+    TimestampSchema,
+    UUIDResponse,
+)
+from app.schemas.permission import (
+    PermissionCreate,
+    PermissionResponse,
+    PermissionUpdate,
+)
+from app.schemas.plan import (
+    PlanCreate,
+    PlanResponse,
+    PlanUpdate,
+)
+from app.schemas.profile import (
+    ProfileCreate,
+    ProfileResponse,
+    ProfileUpdate,
+)
+from app.schemas.role import (
+    RoleCreate,
+    RoleResponse,
+    RoleUpdate,
+    RoleWithPermissions,
+)
+from app.schemas.secure_device import (
+    SecureDeviceCreate,
+    SecureDeviceResponse,
+)
+from app.schemas.tenant import (
+    TenantCreate,
+    TenantListResponse,
+    TenantResponse,
+    TenantUpdate,
+)
+from app.schemas.user import (
+    UserCreate,
+    UserListResponse,
+    UserLogin,
+    UserLoginResponse,
+    UserResponse,
+    UserUpdate,
+)
+from app.schemas.vertical import (
+    VerticalCreate,
+    VerticalResponse,
+    VerticalUpdate,
+)
+
+__all__ = [
+    "BaseSchema",
+    "TimestampSchema",
+    "UUIDResponse",
+    "MessageResponse",
+    "ErrorResponse",
+    "TenantCreate",
+    "TenantUpdate",
+    "TenantResponse",
+    "TenantListResponse",
+    "UserCreate",
+    "UserUpdate",
+    "UserResponse",
+    "UserListResponse",
+    "UserLogin",
+    "UserLoginResponse",
+    "RoleCreate",
+    "RoleUpdate",
+    "RoleResponse",
+    "ProfileCreate",
+    "ProfileUpdate",
+    "ProfileResponse",
+    "PermissionCreate",
+    "PermissionUpdate",
+    "PermissionResponse",
+    "SecureDeviceCreate",
+    "SecureDeviceResponse",
+    "AccessLogCreate",
+    "AccessLogResponse",
+    "VerticalCreate",
+    "VerticalUpdate",
+    "VerticalResponse",
+    "PlanCreate",
+    "PlanUpdate",
+    "PlanResponse",
+]
+12. INSTALAR email-validator
+Pydantic necesita email-validator para EmailStr:
+
+bash
+uv add email-validator
+13. VERIFICACIÓN
+Desde backend/:
+
+bash
+uv run python -c "
+from app.schemas import (
+    TenantCreate, TenantResponse,
+    UserCreate, UserResponse,
+    RoleCreate, RoleResponse,
+    ProfileCreate, ProfileResponse,
+    PermissionCreate, PermissionResponse,
+    SecureDeviceCreate, SecureDeviceResponse,
+    AccessLogCreate, AccessLogResponse,
+    VerticalCreate, VerticalResponse,
+    PlanCreate, PlanResponse,
+)
+print('Schemas importados correctamente')
+"
+Debe mostrar:
+
+text
+Schemas importados correctamente
+14. PROBAR UN SCHEMA
+bash
+uv run python -c "
+from app.schemas import TenantCreate
+t = TenantCreate(
+    name='Clínica San José',
+    tax_id='J-12345678-9',
+    tax_id_type='RIF',
+    admin_email='admin@clinica.com',
+    country='Venezuela',
+    province='Miranda',
+    city='Caracas',
+)
+print(t.model_dump_json(indent=2))
+"
+Debe mostrar el JSON del tenant.
+
+15. ESTRUCTURA FINAL
+text
+backend/
+└── app/
+    └── schemas/
+        ├── __init__.py
+        ├── common.py
+        ├── tenant.py
+        ├── user.py
+        ├── role.py
+        ├── profile.py
+        ├── permission.py
+        ├── secure_device.py
+        ├── access_log.py
+        ├── vertical.py
+        └── plan.py
+16. La frase que lo resume
+Schemas en Pydantic para cada entidad. BaseSchema con from_attributes. Create, Update, Response para cada uno. Validación de email, longitudes, tipos. __init__.py exporta todo. Listo para los endpoints.
+
+Fin de los Schemas en Pydantic.
+Versión 1.0 — 2026-10-10.
