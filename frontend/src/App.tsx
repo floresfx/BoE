@@ -4,14 +4,13 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { Dashboard } from './pages/Dashboard'
 import { Login } from './pages/Login'
 import { NotFound } from './pages/NotFound'
+import { ResourcesList } from './pages/resources/ResourcesList'
 
 function App() {
   return (
     <Routes>
-      {/* Rutas públicas */}
       <Route path="/login" element={<Login />} />
 
-      {/* Rutas privadas (con layout) */}
       <Route
         element={
           <ProtectedRoute>
@@ -21,9 +20,9 @@ function App() {
       >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/resources" element={<ResourcesList />} />
       </Route>
 
-      {/* 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   )

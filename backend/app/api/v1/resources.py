@@ -109,13 +109,16 @@ def create_resource(
 ):
     """Crea un recurso en el schema del tenant autenticado.
 
-    El `search_path` ya está aplicado por get_current_tenant, así que
-    la INSERT cae automáticamente en el schema correcto.
+    Usa flush (no commit) para mantener viva la transacción con su
+    search_path. El commit lo hace get_db al terminar el request.
     """
     # Nombre único por tipo dentro del tenant
     existing = (
         db.query(Resource)
-        .filter(Resource.name == data.name, Resource.resource_type == data.resource_type)
+        .filter(
+            Resource.name == data.name,
+            Resource.resource_type == data.resource_type,
+        )
         .first()
     )
     if existing:
@@ -126,7 +129,7 @@ def create_resource(
 
     resource = Resource(**data.model_dump())
     db.add(resource)
-    db.commit()
+    db.flush()
     db.refresh(resource)
     return ResourceResponse.model_validate(resource)
 
@@ -163,7 +166,7 @@ def update_resource(
     for key, value in update_data.items():
         setattr(resource, key, value)
 
-    db.commit()
+    db.flush()
     db.refresh(resource)
     return ResourceResponse.model_validate(resource)
 
@@ -180,4 +183,4 @@ def delete_resource(
     """
     resource = _get_resource_or_404(db, resource_id)
     resource.is_active = False
-    db.commit()
+    db.flush()

@@ -14,6 +14,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
+    expire_on_commit=False,   # ← NUEVO: no expira atributos tras commit
     bind=engine,
 )
 
@@ -21,12 +22,15 @@ SessionLocal = sessionmaker(
 def get_db() -> Generator[Session, None, None]:
     """Sesión de BD para la request.
 
-    NO aplica search_path aquí. Eso lo hace get_current_tenant,
-    que es quien conoce el schema. Esta sesión es la MISMA que
-    usará get_current_tenant (FastAPI cachea la dependencia).
+    Commit automático al final del request si todo fue bien.
+    Rollback si hay excepción.
     """
     db = SessionLocal()
     try:
         yield db
+        db.commit()          # ← NUEVO: commit automático
+    except Exception:
+        db.rollback()        # ← NUEVO: rollback si hay error
+        raise
     finally:
         db.close()
