@@ -11,6 +11,8 @@ from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_role import UserRole
 from app.models.vertical import Vertical
+from app.models.plan_feature import PlanFeature
+from app.models.plan_limit import PlanLimit
 
 # Catalogos simples (Bloque 1)
 from app.models.catalogs import (
@@ -96,4 +98,6 @@ __all__ = [
     # Servicios (Bloque 5)
     "ServiceTemplate",
     "VerticalService",
+    "PlanFeature",
+    "PlanLimit",
 ]

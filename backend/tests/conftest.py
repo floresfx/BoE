@@ -20,8 +20,11 @@ from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models import (
     Base,
+    Currency,
     Permission,
     Plan,
+    PlanFeature,
+    PlanLimit,
     Profile,
     Role,
     Tenant,
@@ -201,14 +204,16 @@ def vertical(db: Session) -> Vertical:
 
 
 @pytest.fixture
-def plan(db: Session) -> Plan:
+def plan(db: Session, currency) -> Plan:
     """Crea un plan de prueba."""
     uid = uuid4().hex
     p = Plan(
+        code=f"test_plan_{uid[:8]}",
         name=f"Test Plan {uid[:8]}",
-        description="Test",
         price=39.00,
-        currency="USD",
+        currency_id=currency.id,
+        interval="monthly",
+        trial_days=14,
         is_active=True,
     )
     db.add(p)
@@ -263,3 +268,18 @@ def auth_headers(client: TestClient, user: User) -> dict:
     assert response.status_code == 200, f"Login falló: {response.json()}"
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture
+def currency(db: Session) -> Currency:
+    """Crea una moneda de prueba."""
+    uid = uuid4().hex
+    c = Currency(
+        code=f"TST{uid[:3].upper()}",
+        name=f"Test Currency {uid[:6]}",
+        symbol="T$",
+        decimals=2,
+        is_base=False,
+    )
+    db.add(c)
+    db.flush()
+    return c

@@ -5,22 +5,24 @@ from fastapi.testclient import TestClient
 from app.models import Plan
 
 
-def test_create_plan(client: TestClient, auth_headers: dict):
+def test_create_plan(client: TestClient, auth_headers: dict, currency):
     """Crear un plan (requiere auth)."""
-    name = f"Plan Test {uuid4().hex[:6]}"
+    uid = uuid4().hex[:6]
     response = client.post(
         "/api/v1/plans",
         headers=auth_headers,
         json={
-            "name": name,
-            "description": "Test",
+            "code": f"plan_test_{uid}",
+            "name": f"Plan Test {uid}",
             "price": 39.00,
-            "currency": "USD",
+            "currency_id": str(currency.id),
+            "interval": "monthly",
+            "trial_days": 14,
             "is_active": True,
         },
     )
     assert response.status_code == 201
-    assert response.json()["name"] == name
+    assert response.json()["code"] == f"plan_test_{uid}"
 
 
 def test_list_plans(client: TestClient, auth_headers: dict, plan: Plan):

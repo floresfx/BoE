@@ -1,27 +1,38 @@
 from decimal import Decimal
+from uuid import UUID
 
-from sqlalchemy import Boolean, Numeric, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, ForeignKey, Numeric, SmallInteger, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
 
 
 class Plan(Base, UUIDMixin, TimestampMixin):
-    """Planes de suscripción."""
+    """Planes de suscripcion."""
     __tablename__ = "plans"
 
-    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(
-        String(10), nullable=False, default="USD"
+    code: Mapped[str] = mapped_column(
+        String(30), unique=True, nullable=False, index=True
     )
-    features: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    limits: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    currency_id: Mapped[UUID] = mapped_column(
+        ForeignKey("currencies.id"), nullable=False
+    )
+    interval: Mapped[str] = mapped_column(String(20), nullable=False)
+    trial_days: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, default=0
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True
     )
 
     # Relaciones
+    currency = relationship("Currency")
     tenants = relationship("Tenant", back_populates="plan")
+    features = relationship(
+        "PlanFeature", back_populates="plan", cascade="all, delete-orphan"
+    )
+    limits = relationship(
+        "PlanLimit", back_populates="plan", cascade="all, delete-orphan"
+    )

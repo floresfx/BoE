@@ -55,11 +55,11 @@ def create_plan(
     db: Session = Depends(get_db),
 ):
     """Crea un nuevo plan."""
-    existing = db.query(Plan).filter(Plan.name == data.name).first()
+    existing = db.query(Plan).filter(Plan.code == data.code).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un plan con ese nombre",
+            detail="Ya existe un plan con ese code",
         )
 
     plan = Plan(**data.model_dump())
@@ -76,18 +76,10 @@ def update_plan(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Actualiza un plan."""
+    """Actualiza un plan. `code` no es editable."""
     plan = _get_plan_or_404(db, plan_id)
 
     update_data = data.model_dump(exclude_unset=True)
-
-    if "name" in update_data and update_data["name"] != plan.name:
-        existing = db.query(Plan).filter(Plan.name == update_data["name"]).first()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya existe un plan con ese nombre",
-            )
 
     for key, value in update_data.items():
         setattr(plan, key, value)
