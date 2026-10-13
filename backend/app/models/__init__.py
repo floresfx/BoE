@@ -47,6 +47,12 @@ from app.models.geo import (
     Tax,
 )
 
+# Servicios (Bloque 5)
+from app.models.services import (
+    ServiceTemplate,
+    VerticalService,
+)
+
 __all__ = [
     "AccessLog",
     "Base",
@@ -87,4 +93,7 @@ __all__ = [
     "DocumentType",
     "State",
     "Tax",
+    # Servicios (Bloque 5)
+    "ServiceTemplate",
+    "VerticalService",
 ]

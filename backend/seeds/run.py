@@ -29,6 +29,10 @@ from seeds.permissions import seed_permissions
 from seeds.plans import seed_plans
 from seeds.profiles import seed_profiles
 from seeds.roles import seed_roles
+from seeds.services import (
+    seed_service_templates,
+    seed_verticals_services,
+)
 from seeds.verticals import seed_verticals
 
 
@@ -113,7 +117,7 @@ def run_seeds() -> None:
         print(f"   Tipos de documento: {dt} creados")
 
         # =====================================================================
-        # Catalogos existentes
+        # Catalogos existentes (verticales primero, luego servicios)
         # =====================================================================
         print("\nCatalogos existentes")
 
@@ -133,7 +137,18 @@ def run_seeds() -> None:
         print(f"   Roles: {r} creados")
 
         # =====================================================================
-        # Relaciones N:M (dependen de verticales + attributes)
+        # BLOQUE 5 - Servicios (depende de verticales + categorias)
+        # =====================================================================
+        print("\nServicios")
+
+        svc = seed_service_templates(db)
+        print(f"   Service templates: {svc} creados")
+
+        vs = seed_verticals_services(db)
+        print(f"   Servicios por vertical: {vs} creados")
+
+        # =====================================================================
+        # Relaciones N:M restantes (dependen de verticales + attributes)
         # =====================================================================
         print("\nRelaciones")
 
