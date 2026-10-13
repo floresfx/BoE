@@ -12,7 +12,7 @@ from app.models.user import User
 from app.models.user_role import UserRole
 from app.models.vertical import Vertical
 
-# Catálogos simples (Bloque 1)
+# Catalogos simples (Bloque 1)
 from app.models.catalogs import (
     AttributeType,
     Currency,
@@ -21,7 +21,7 @@ from app.models.catalogs import (
     Timezone,
 )
 
-# Catálogos Bloque 2
+# Catalogos Bloque 2
 from app.models.catalogs import (
     Attribute,
     Category,
@@ -30,6 +30,12 @@ from app.models.catalogs import (
     UnitCategory,
     UnitConversion,
     VerticalAttribute,
+)
+
+# Catalogos Bloque 3
+from app.models.catalogs import (
+    Feature,
+    FeatureDependency,
 )
 
 __all__ = [
@@ -49,12 +55,13 @@ __all__ = [
     "UserProfile",
     "UserRole",
     "Vertical",
+    # Catalogos Bloque 1
     "AttributeType",
     "Currency",
     "DateFormat",
     "NumberFormat",
     "Timezone",
-        # Catálogos Bloque 2
+    # Catalogos Bloque 2
     "Attribute",
     "Category",
     "Subcategory",
@@ -62,5 +69,7 @@ __all__ = [
     "UnitCategory",
     "UnitConversion",
     "VerticalAttribute",
+    # Catalogos Bloque 3
+    "Feature",
+    "FeatureDependency",
 ]
-

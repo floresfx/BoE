@@ -16,6 +16,9 @@ from seeds.catalogs.unit_conversions import seed_unit_conversions
 from seeds.catalogs.units import seed_units
 from seeds.catalogs.verticals_attributes import seed_verticals_attributes
 
+from seeds.catalogs.features import seed_features
+from seeds.catalogs.feature_dependencies import seed_feature_dependencies
+
 __all__ = [
     # Bloque 1
     "seed_attribute_types",
@@ -31,4 +34,6 @@ __all__ = [
     "seed_unit_conversions",
     "seed_units",
     "seed_verticals_attributes",
+    "seed_features",
+    "seed_feature_dependencies",
 ]

@@ -8,6 +8,8 @@ from seeds.catalogs import (
     seed_categories,
     seed_currencies,
     seed_date_formats,
+    seed_feature_dependencies,
+    seed_features,
     seed_number_formats,
     seed_subcategories,
     seed_timezones,
@@ -27,88 +29,99 @@ def run_seeds() -> None:
     """Ejecuta todos los seeds en orden de dependencias."""
     db = SessionLocal()
     try:
-        print("🌱 Iniciando seeds...")
+        print("Iniciando seeds...")
 
         # =====================================================================
-        # BLOQUE 1 — Catálogos simples (sin dependencias)
+        # BLOQUE 1 - Catalogos simples (sin dependencias)
         # =====================================================================
-        print("\n🌍 Catálogos simples")
+        print("\nCatalogos simples")
 
         c = seed_currencies(db)
-        print(f"   ✅ Monedas: {c} creadas")
+        print(f"   Monedas: {c} creadas")
 
         tz = seed_timezones(db)
-        print(f"   ✅ Zonas horarias: {tz} creadas")
+        print(f"   Zonas horarias: {tz} creadas")
 
         df = seed_date_formats(db)
-        print(f"   ✅ Formatos de fecha: {df} creados")
+        print(f"   Formatos de fecha: {df} creados")
 
         nf = seed_number_formats(db)
-        print(f"   ✅ Formatos de número: {nf} creados")
+        print(f"   Formatos de numero: {nf} creados")
 
         at = seed_attribute_types(db)
-        print(f"   ✅ Tipos de atributo: {at} creados")
+        print(f"   Tipos de atributo: {at} creados")
 
         # =====================================================================
-        # BLOQUE 2 — Catálogos dependientes
+        # BLOQUE 2 - Catalogos dependientes
         # =====================================================================
-        print("\n📚 Catálogos dependientes")
+        print("\nCatalogos dependientes")
 
         uc = seed_unit_categories(db)
-        print(f"   ✅ Categorías de unidades: {uc} creadas")
+        print(f"   Categorias de unidades: {uc} creadas")
 
         u = seed_units(db)
-        print(f"   ✅ Unidades: {u} creadas")
+        print(f"   Unidades: {u} creadas")
 
         uconv = seed_unit_conversions(db)
-        print(f"   ✅ Conversiones: {uconv} creadas")
+        print(f"   Conversiones: {uconv} creadas")
 
         cat = seed_categories(db)
-        print(f"   ✅ Categorías: {cat} creadas")
+        print(f"   Categorias: {cat} creadas")
 
         sub = seed_subcategories(db)
-        print(f"   ✅ Subcategorías: {sub} creadas")
+        print(f"   Subcategorias: {sub} creadas")
 
         attrs = seed_attributes(db)
-        print(f"   ✅ Atributos: {attrs} creados")
+        print(f"   Atributos: {attrs} creados")
 
         # =====================================================================
-        # Catálogos existentes
+        # BLOQUE 3 - Features
         # =====================================================================
-        print("\n📚 Catálogos existentes")
+        print("\nFeatures")
+
+        f = seed_features(db)
+        print(f"   Features: {f} creados")
+
+        fd = seed_feature_dependencies(db)
+        print(f"   Dependencias: {fd} creadas")
+
+        # =====================================================================
+        # Catalogos existentes
+        # =====================================================================
+        print("\nCatalogos existentes")
 
         v = seed_verticals(db)
-        print(f"   ✅ Verticales: {v} creados")
+        print(f"   Verticales: {v} creados")
 
         p = seed_plans(db)
-        print(f"   ✅ Planes: {p} creados")
+        print(f"   Planes: {p} creados")
 
         pr = seed_profiles(db)
-        print(f"   ✅ Perfiles: {pr} creados")
+        print(f"   Perfiles: {pr} creados")
 
         pe = seed_permissions(db)
-        print(f"   ✅ Permisos: {pe} creados")
+        print(f"   Permisos: {pe} creados")
 
         r = seed_roles(db)
-        print(f"   ✅ Roles: {r} creados")
+        print(f"   Roles: {r} creados")
 
         # =====================================================================
         # Relaciones N:M (dependen de verticales + attributes)
         # =====================================================================
-        print("\n🔗 Relaciones")
+        print("\nRelaciones")
 
         va = seed_verticals_attributes(db)
-        print(f"   ✅ Atributos por vertical: {va} creados")
+        print(f"   Atributos por vertical: {va} creados")
 
         # =====================================================================
         # Admin (al final)
         # =====================================================================
-        print("\n👤 Admin")
+        print("\nAdmin")
         seed_admin(db)
 
-        print("\n🌱 Seeds completados")
+        print("\nSeeds completados")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")
         db.rollback()
         raise
     finally:

@@ -16,6 +16,10 @@ from app.models.catalogs.unit_category import UnitCategory
 from app.models.catalogs.unit_conversion import UnitConversion
 from app.models.catalogs.vertical_attribute import VerticalAttribute
 
+# Bloque 3 — Features
+from app.models.catalogs.feature import Feature
+from app.models.catalogs.feature_dependency import FeatureDependency
+
 __all__ = [
     # Bloque 1
     "AttributeType",
@@ -31,4 +35,7 @@ __all__ = [
     "UnitCategory",
     "UnitConversion",
     "VerticalAttribute",
+     # Bloque 3
+    "Feature",
+    "FeatureDependency",
 ]
