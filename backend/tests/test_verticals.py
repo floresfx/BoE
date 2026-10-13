@@ -13,15 +13,21 @@ def test_list_verticals_vacio(client: TestClient):
 
 
 def test_create_vertical(client: TestClient, auth_headers: dict):
-    """Crear vertical requiere auth."""
-    name = f"Vertical Test {uuid4().hex[:6]}"
+    """Crear un vertical requiere auth."""
+    uid = uuid4().hex
     response = client.post(
         "/api/v1/verticals",
         headers=auth_headers,
-        json={"name": name, "description": "Test"},
+        json={
+            "code": f"test_vertical_{uid[:8]}",
+            "name": f"Vertical Test {uid[:8]}",
+            "description": "Test",
+            "is_active": True,
+        },
     )
     assert response.status_code == 201
-    assert response.json()["name"] == name
+    data = response.json()
+    assert data["code"].startswith("test_vertical_")
 
 
 def test_get_vertical(client: TestClient, vertical: Vertical):

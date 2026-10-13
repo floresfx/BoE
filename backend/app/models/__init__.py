@@ -21,6 +21,17 @@ from app.models.catalogs import (
     Timezone,
 )
 
+# Catálogos Bloque 2
+from app.models.catalogs import (
+    Attribute,
+    Category,
+    Subcategory,
+    Unit,
+    UnitCategory,
+    UnitConversion,
+    VerticalAttribute,
+)
+
 __all__ = [
     "AccessLog",
     "Base",
@@ -43,5 +54,13 @@ __all__ = [
     "DateFormat",
     "NumberFormat",
     "Timezone",
+        # Catálogos Bloque 2
+    "Attribute",
+    "Category",
+    "Subcategory",
+    "Unit",
+    "UnitCategory",
+    "UnitConversion",
+    "VerticalAttribute",
 ]
 

@@ -5,14 +5,25 @@ from app.models.base import Base, TimestampMixin, UUIDMixin
 
 
 class Vertical(Base, UUIDMixin, TimestampMixin):
-    """Verticales de negocio."""
+    """Verticales de negocio (global).
+
+    Los verticales definen a qué se dedica cada empresa.
+    """
     __tablename__ = "verticals"
 
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    code: Mapped[str] = mapped_column(
+        String(50), unique=True, nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True
     )
 
-    # Relaciones
+    # Relaciones existentes
     tenants = relationship("Tenant", back_populates="vertical")
+
+    # Relaciones nuevas (Bloque 2)
+    attributes = relationship(
+        "VerticalAttribute", back_populates="vertical"
+    )

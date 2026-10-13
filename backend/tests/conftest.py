@@ -190,7 +190,11 @@ def token_for_user():
 def vertical(db: Session) -> Vertical:
     """Crea un vertical de prueba."""
     uid = uuid4().hex
-    v = Vertical(name=f"Test Vertical {uid[:8]}", description="Test")
+    v = Vertical(
+        code=f"test_vertical_{uid[:8]}",
+        name=f"Test Vertical {uid[:8]}",
+        description="Test",
+    )
     db.add(v)
     db.flush()
     return v
