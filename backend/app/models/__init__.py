@@ -38,6 +38,15 @@ from app.models.catalogs import (
     FeatureDependency,
 )
 
+# Geografia (Bloque 4)
+from app.models.geo import (
+    City,
+    Country,
+    DocumentType,
+    State,
+    Tax,
+)
+
 __all__ = [
     "AccessLog",
     "Base",
@@ -72,4 +81,10 @@ __all__ = [
     # Catalogos Bloque 3
     "Feature",
     "FeatureDependency",
+    # Geografia (Bloque 4)
+    "City",
+    "Country",
+    "DocumentType",
+    "State",
+    "Tax",
 ]

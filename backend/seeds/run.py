@@ -18,6 +18,13 @@ from seeds.catalogs import (
     seed_units,
     seed_verticals_attributes,
 )
+from seeds.geo import (
+    seed_cities,
+    seed_countries,
+    seed_document_types,
+    seed_states,
+    seed_taxes,
+)
 from seeds.permissions import seed_permissions
 from seeds.plans import seed_plans
 from seeds.profiles import seed_profiles
@@ -84,6 +91,26 @@ def run_seeds() -> None:
 
         fd = seed_feature_dependencies(db)
         print(f"   Dependencias: {fd} creadas")
+
+        # =====================================================================
+        # BLOQUE 4 - Geografia
+        # =====================================================================
+        print("\nGeografia")
+
+        co = seed_countries(db)
+        print(f"   Paises: {co} creados")
+
+        st = seed_states(db)
+        print(f"   Estados: {st} creados")
+
+        ci = seed_cities(db)
+        print(f"   Ciudades: {ci} creadas")
+
+        tx = seed_taxes(db)
+        print(f"   Impuestos: {tx} creados")
+
+        dt = seed_document_types(db)
+        print(f"   Tipos de documento: {dt} creados")
 
         # =====================================================================
         # Catalogos existentes
