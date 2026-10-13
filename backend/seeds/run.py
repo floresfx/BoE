@@ -8,6 +8,14 @@ from seeds.profiles import seed_profiles
 from seeds.roles import seed_roles  # ← ver nota abajo
 from seeds.verticals import seed_verticals
 
+from seeds.catalogs import (
+    seed_attribute_types,
+    seed_currencies,
+    seed_date_formats,
+    seed_number_formats,
+    seed_timezones,
+)
+
 
 def run_seeds() -> None:
     """Ejecuta todos los seeds en orden de dependencias."""
@@ -29,6 +37,23 @@ def run_seeds() -> None:
 
         r = seed_roles(db)
         print(f"   ✅ Roles: {r} creados")
+
+        print("   🌍 Catálogos simples...")
+
+        c = seed_currencies(db)
+        print(f"   ✅ Monedas: {c} creadas")
+
+        tz = seed_timezones(db)
+        print(f"   ✅ Zonas horarias: {tz} creadas")
+
+        df = seed_date_formats(db)
+        print(f"   ✅ Formatos de fecha: {df} creados")
+
+        nf = seed_number_formats(db)
+        print(f"   ✅ Formatos de número: {nf} creados")
+
+        at = seed_attribute_types(db)
+        print(f"   ✅ Tipos de atributo: {at} creados")
 
         a = seed_admin(db)
         print(f"   ✅ Admin: {a}")

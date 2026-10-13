@@ -12,6 +12,15 @@ from app.models.user import User
 from app.models.user_role import UserRole
 from app.models.vertical import Vertical
 
+# Catálogos simples (Bloque 1)
+from app.models.catalogs import (
+    AttributeType,
+    Currency,
+    DateFormat,
+    NumberFormat,
+    Timezone,
+)
+
 __all__ = [
     "AccessLog",
     "Base",
@@ -29,4 +38,10 @@ __all__ = [
     "UserProfile",
     "UserRole",
     "Vertical",
+    "AttributeType",
+    "Currency",
+    "DateFormat",
+    "NumberFormat",
+    "Timezone",
 ]
+
