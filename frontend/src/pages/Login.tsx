@@ -1,105 +1,106 @@
-import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { z } from 'zod'
+import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
 import { useAuth } from '../hooks/useAuth'
 
+const schema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(1, 'Requerido'),
+})
+
+type FormValues = z.infer<typeof schema>
+
 export function Login() {
-  const { login, isAuthenticated } = useAuth()
+  const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from =
-    (location.state as { from?: { pathname: string } })?.from?.pathname ||
-    '/dashboard'
-
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  // Si ya está autenticado, redirige
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
-  }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: '', password: '' },
+  })
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('registered') === '1') {
+      setSuccessMsg(
+        '¡Registro exitoso! Inicia sesión con tu email y contraseña.',
+      )
+    }
+  }, [location.search])
+
+  const onSubmit = async (values: FormValues) => {
     setError(null)
-    setIsLoading(true)
-
     try {
-      await login({ email, password })
-      navigate(from, { replace: true })
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { detail?: string } } }
-      const detail = axiosErr?.response?.data?.detail
-      setError(typeof detail === 'string' ? detail : 'Error al iniciar sesión')
-    } finally {
-      setIsLoading(false)
+      await login(values)
+      navigate('/dashboard')
+    } catch (err) {
+      const apiErr = err as { response?: { data?: { detail?: string } } }
+      setError(
+        apiErr.response?.data?.detail ??
+          'Credenciales inválidas. Verifica tu email y contraseña.',
+      )
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-slate-900">BoE MPR</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Planificación y Suministro
+            Inicia sesión en tu cuenta
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-slate-700 mb-1"
-            >
-              Correo electrónico
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-              placeholder="admin@test.com"
-            />
+        {successMsg && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+            {successMsg}
           </div>
+        )}
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-slate-700 mb-1"
-            >
-              Contraseña
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-              placeholder="••••••••"
-            />
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+            {error}
           </div>
+        )}
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-3 py-2">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-slate-900 text-white py-2 rounded-md text-sm font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
-          </button>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <Input
+            label="Email"
+            type="email"
+            placeholder="admin@empresa.com"
+            {...register('email')}
+            error={errors.email?.message}
+          />
+          <Input
+            label="Contraseña"
+            type="password"
+            placeholder="••••••••"
+            {...register('password')}
+            error={errors.password?.message}
+          />
+          <Button type="submit" disabled={isSubmitting} className="w-full">
+            {isSubmitting ? 'Entrando...' : 'Iniciar sesión'}
+          </Button>
         </form>
+
+        <p className="text-sm text-slate-600 text-center mt-6">
+          ¿No tienes cuenta?{' '}
+          <Link to="/register" className="text-blue-600 hover:underline">
+            Regístrate
+          </Link>
+        </p>
       </div>
     </div>
   )

@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.models import (
     Attribute,
     Category,
+    Country,
     Subcategory,
     Tax,
     Unit,
@@ -127,4 +128,19 @@ def list_taxes(db: Session = Depends(get_db)):
             "applies_to": t.applies_to,
         }
         for t in taxes
+    ]
+
+
+@router.get("/countries")
+def list_countries(db: Session = Depends(get_db)):
+    """Lista todos los países activos."""
+    countries = (
+        db.query(Country)
+        .filter(Country.is_active.is_(True))
+        .order_by(Country.name)
+        .all()
+    )
+    return [
+        {"code": c.code, "name": c.name, "phone_prefix": c.phone_prefix}
+        for c in countries
     ]

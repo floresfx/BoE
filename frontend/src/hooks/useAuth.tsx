@@ -1,74 +1,89 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import { api } from '../lib/api'
 import { auth } from '../lib/auth'
-import type { LoginRequest, LoginResponse, User } from '../types/api'
+import type {
+  LoginRequest,
+  RegisterRequest,
+  RegisterResponse,
+  User,
+} from '../types/auth'
 
 interface AuthContextValue {
   user: User | null
-  isLoading: boolean
   isAuthenticated: boolean
-  login: (credentials: LoginRequest) => Promise<void>
+  isLoading: boolean
+  login: (data: LoginRequest) => Promise<void>
+  register: (data: RegisterRequest) => Promise<RegisterResponse>
   logout: () => void
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => auth.getUser<User>())
   const [isLoading, setIsLoading] = useState(false)
 
-  // Verifica el token al cargar la app
   useEffect(() => {
-    const token = auth.getToken()
-    if (!token) {
+    if (!auth.getToken()) {
       setUser(null)
-      return
     }
+  }, [])
 
-    // Si hay token pero no user en localStorage, pide /me
-    if (!user) {
-      api
-        .get<User>('/auth/me')
-        .then(({ data }) => {
-          setUser(data)
-          auth.setUser(data)
-        })
-        .catch(() => {
-          auth.clearToken()
-          setUser(null)
-        })
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const login = useCallback(async (credentials: LoginRequest) => {
+  const login = useCallback(async (data: LoginRequest) => {
     setIsLoading(true)
     try {
-      const { data } = await api.post<LoginResponse>('/auth/login', credentials)
-      auth.setToken(data.access_token)
-      auth.setUser(data.user)
-      setUser(data.user)
+      const response = await api.post('/auth/login', data)
+      const { access_token, user: loggedUser } = response.data
+      auth.setToken(access_token)
+      auth.setUser(loggedUser)
+      setUser(loggedUser)
     } finally {
       setIsLoading(false)
     }
   }, [])
+
+  const register = useCallback(
+    async (data: RegisterRequest): Promise<RegisterResponse> => {
+      setIsLoading(true)
+      try {
+        const response = await api.post<RegisterResponse>('/register', data)
+        return response.data
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [],
+  )
 
   const logout = useCallback(() => {
     auth.clearToken()
     setUser(null)
   }, [])
 
-  const value: AuthContextValue = {
-    user,
-    isLoading,
-    isAuthenticated: Boolean(user),
-    login,
-    logout,
-  }
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      isAuthenticated: Boolean(user),
+      isLoading,
+      login,
+      register,
+      logout,
+    }),
+    [user, isLoading, login, register, logout],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth(): AuthContextValue {
+export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) {
     throw new Error('useAuth debe usarse dentro de <AuthProvider>')
