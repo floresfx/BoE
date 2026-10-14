@@ -1,9 +1,11 @@
-"""Modelos operativos (por tenant).
-
-Estos modelos NO viven en `public`. Viven en el schema del tenant,
-resuelto dinámicamente vía `search_path`.
-"""
-
+"""Modelos operativos (por tenant)."""
 from app.models.operational.resource import Resource, RESOURCE_TYPES
+from app.models.operational.resource_attribute import ResourceAttribute
+from app.models.operational.resource_tax import ResourceTax
 
-__all__ = ["Resource", "RESOURCE_TYPES"]
+__all__ = [
+    "Resource",
+    "RESOURCE_TYPES",
+    "ResourceAttribute",
+    "ResourceTax",
+]

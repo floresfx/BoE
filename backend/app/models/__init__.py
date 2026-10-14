@@ -1,7 +1,12 @@
 from app.models.access_log import AccessLog
 from app.models.base import Base
 from app.models.base_tenant import TenantBase
-from app.models.operational import Resource, RESOURCE_TYPES
+from app.models.operational import (
+    Resource,
+    RESOURCE_TYPES,
+    ResourceAttribute,
+    ResourceTax,
+)
 from app.models.permission import Permission, RolePermission
 from app.models.plan import Plan
 from app.models.profile import Profile, UserProfile
@@ -13,6 +18,7 @@ from app.models.user_role import UserRole
 from app.models.vertical import Vertical
 from app.models.plan_feature import PlanFeature
 from app.models.plan_limit import PlanLimit
+
 
 # Catalogos simples (Bloque 1)
 from app.models.catalogs import (
@@ -100,4 +106,8 @@ __all__ = [
     "VerticalService",
     "PlanFeature",
     "PlanLimit",
+    "RESOURCE_TYPES",
+    "Resource",
+    "ResourceAttribute",
+    "ResourceTax",
 ]
