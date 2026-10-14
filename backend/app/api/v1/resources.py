@@ -15,6 +15,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
+from app.services.plan_service import check_plan_limit
 from app.api.deps import get_current_tenant
 from app.core.database import get_db
 from app.models import (
@@ -35,6 +36,8 @@ from app.schemas.resource import (
     ResourceResponse,
     ResourceUpdate,
 )
+
+from app.services.plan_service import check_plan_limit
 
 router = APIRouter(prefix="/resources", tags=["resources"])
 
@@ -198,6 +201,9 @@ def create_resource(
     Usa flush (no commit) para mantener viva la transacción con su
     search_path. El commit lo hace get_db al terminar el request.
     """
+    # Verificar límite del plan
+    check_plan_limit(db, current_tenant, "recursos", Resource)
+
     # Validar FKs
     _validate_fk_exists(db, Unit, data.base_unit_id, "Unidad")
     if data.category_id:

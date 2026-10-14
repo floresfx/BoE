@@ -26,3 +26,14 @@ export interface LoginResponse {
   token_type: string
   user: User
 }
+
+// Tipos comunes de la API
+
+export interface ApiError {
+  detail: string
+}
+
+export interface Paginated<T> {
+  items: T[]
+  total: number
+}

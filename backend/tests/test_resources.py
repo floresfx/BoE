@@ -501,3 +501,82 @@ def test_create_resource_with_inline_attributes_and_taxes(
     data = response.json()
     assert len(data["attributes"]) == 1
     assert len(data["taxes"]) == 1
+
+    # ---------------------------------------------------------------------------
+# Test: límites por plan
+# ---------------------------------------------------------------------------
+
+def test_create_resource_excede_limite_plan(
+    client: TestClient,
+    tenant_a,
+    user_factory,
+    token_for_user,
+    unit,
+    currency,  # ← fixture que ya existe
+    db: Session,
+):
+    """Crear más recursos que el límite del plan → 403."""
+    from app.models import Plan, PlanLimit
+
+    # Buscar plan "mpr_base" (ya existe vía seed)
+    plan = db.query(Plan).filter(Plan.code == "mpr_base").first()
+
+    # Si no existe, crear uno de prueba con currency real
+    if not plan:
+        plan = Plan(
+            code="test_limit_plan",
+            name="Test Limit Plan",
+            price=0,
+            currency_id=currency.id,  # ← FK válida
+            interval="monthly",
+            trial_days=0,
+        )
+        db.add(plan)
+        db.flush()
+
+    # Asegurar que tiene un límite de 1 recurso
+    existing_limit = (
+        db.query(PlanLimit)
+        .filter(
+            PlanLimit.plan_id == plan.id,
+            PlanLimit.limit_code == "recursos",
+        )
+        .first()
+    )
+    if existing_limit:
+        existing_limit.value = 1
+    else:
+        db.add(PlanLimit(plan_id=plan.id, limit_code="recursos", value=1))
+
+    tenant_a.plan_id = plan.id
+    db.flush()
+
+    user, _ = user_factory(tenant_a)
+    token = token_for_user(user)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Primer recurso → OK
+    r1 = client.post(
+        "/api/v1/resources",
+        headers=headers,
+        json={
+            "name": "Recurso 1",
+            "resource_type": "materia_prima",
+            "base_unit_id": str(unit.id),
+        },
+    )
+    assert r1.status_code == 201, r1.json()
+
+    # Segundo recurso → 403
+    r2 = client.post(
+        "/api/v1/resources",
+        headers=headers,
+        json={
+            "name": "Recurso 2",
+            "resource_type": "materia_prima",
+            "base_unit_id": str(unit.id),
+        },
+    )
+    assert r2.status_code == 403, r2.json()
+    detail = r2.json()["detail"].lower()
+    assert "límite" in detail or "limite" in detail
