@@ -283,3 +283,134 @@ def currency(db: Session) -> Currency:
     db.add(c)
     db.flush()
     return c
+
+    # ---------------------------------------------------------------------------
+# Fixtures de datos maestros (Fase 2)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def unit(db: Session) -> "Unit":
+    """Crea una unidad de prueba."""
+    from app.models import Unit, UnitCategory
+    # Crear categoría si no existe
+    cat = db.query(UnitCategory).filter(UnitCategory.code == "test_peso").first()
+    if not cat:
+        cat = UnitCategory(code="test_peso", name="Test Peso")
+        db.add(cat)
+        db.flush()
+    uid = uuid4().hex[:6]
+    u = Unit(
+        code=f"tkg_{uid}",
+        name=f"Test Kilogramo {uid}",
+        symbol="tkg",
+        category_id=cat.id,
+        is_base=True,
+    )
+    db.add(u)
+    db.flush()
+    return u
+
+
+@pytest.fixture
+def category(db: Session) -> "Category":
+    """Crea una categoría de prueba."""
+    from app.models import Category
+    uid = uuid4().hex[:6]
+    c = Category(code=f"test_cat_{uid}", name=f"Test Category {uid}")
+    db.add(c)
+    db.flush()
+    return c
+
+
+@pytest.fixture
+def subcategory(db: Session, category) -> "Subcategory":
+    """Crea una subcategoría de prueba."""
+    from app.models import Subcategory
+    uid = uuid4().hex[:6]
+    s = Subcategory(
+        category_id=category.id,
+        code=f"test_sub_{uid}",
+        name=f"Test Subcategory {uid}",
+    )
+    db.add(s)
+    db.flush()
+    return s
+
+
+@pytest.fixture
+def attribute(db: Session) -> "Attribute":
+    """Crea un atributo de prueba."""
+    from app.models import Attribute, AttributeType
+    at = db.query(AttributeType).filter(AttributeType.code == "boolean").first()
+    if not at:
+        at = AttributeType(code="boolean", name="Booleano")
+        db.add(at)
+        db.flush()
+    uid = uuid4().hex[:6]
+    a = Attribute(
+        code=f"test_attr_{uid}",
+        name=f"Test Attribute {uid}",
+        type_id=at.id,
+    )
+    db.add(a)
+    db.flush()
+    return a
+
+
+@pytest.fixture
+def tax(db: Session, country) -> "Tax":
+    """Crea un impuesto de prueba."""
+    from app.models import Tax
+    uid = uuid4().hex[:6]
+    t = Tax(
+        country_id=country.id,
+        code=f"TEST_TAX_{uid}",
+        name=f"Test Tax {uid}",
+        rate=16.00,
+        applies_to="general",
+    )
+    db.add(t)
+    db.flush()
+    return t
+
+@pytest.fixture
+def country(db: Session) -> "Country":
+    """Crea un país de prueba. Code de exactamente 2 caracteres."""
+    from app.models import Country, Currency, Timezone
+    tz = db.query(Timezone).filter(Timezone.code == "America/Caracas").first()
+    if not tz:
+        tz = Timezone(
+            code="America/Caracas",
+            friendly_name="Venezuela",
+            utc_offset="UTC-4",
+        )
+        db.add(tz)
+        db.flush()
+    cur = db.query(Currency).filter(Currency.code == "USD").first()
+    if not cur:
+        cur = Currency(
+            code="USD",
+            name="Dólar",
+            symbol="$",
+            decimals=2,
+            is_base=True,
+        )
+        db.add(cur)
+        db.flush()
+    uid = uuid4().hex[:6]
+    # countries.code es VARCHAR(2): usar 2 chars exactos
+    code = f"X{uid[0].upper()}"
+    # Evitar colisión con codes existentes
+    existing = db.query(Country).filter(Country.code == code).first()
+    if existing:
+        code = f"Y{uid[1].upper()}"
+    c = Country(
+        code=code,
+        name=f"Test Country {uid}",
+        timezone_id=tz.id,
+        currency_id=cur.id,
+        phone_prefix="+999",
+    )
+    db.add(c)
+    db.flush()
+    return c
