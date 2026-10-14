@@ -11,19 +11,12 @@ class Vertical(Base, UUIDMixin, TimestampMixin):
     """
     __tablename__ = "verticals"
 
-    code: Mapped[str] = mapped_column(
-        String(50), unique=True, nullable=False, index=True
-    )
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True
-    )
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    # Relaciones existentes
+    # Relaciones
     tenants = relationship("Tenant", back_populates="vertical")
-
-    # Relaciones nuevas (Bloque 2)
-    attributes = relationship(
-        "VerticalAttribute", back_populates="vertical"
-    )
+    services = relationship("VerticalService", back_populates="vertical")
+    attributes = relationship("VerticalAttribute", back_populates="vertical")

@@ -25,4 +25,6 @@ class VerticalService(Base, UUIDMixin, TimestampMixin):
         Integer, nullable=False, default=0
     )
 
+    # Relaciones
     service = relationship("ServiceTemplate", back_populates="verticals")
+    vertical = relationship("Vertical", back_populates="services")
