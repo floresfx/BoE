@@ -7,6 +7,8 @@ from app.api.v1 import (
     permissions,
     plans,
     profiles,
+    subscription, 
+    register,
     resources,
     resource_attributes,
     resource_taxes,
@@ -34,3 +36,5 @@ api_router.include_router(resources.router)
 api_router.include_router(resource_attributes.router)
 api_router.include_router(resource_taxes.router)
 api_router.include_router(catalogs.router)
+api_router.include_router(register.router)
+api_router.include_router(subscription.router)

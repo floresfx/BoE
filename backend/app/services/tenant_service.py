@@ -1,0 +1,104 @@
+"""Servicio para gestionar tenants.
+
+Centraliza la lógica de creación de tenants: crear el schema en
+PostgreSQL, crear el tenant en public, etc.
+"""
+
+from uuid import UUID, uuid4
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.models import Tenant
+
+
+def _validate_schema_name(schema_name: str) -> None:
+    """Valida que el schema_name sea seguro (solo letras, números, _)."""
+    if not schema_name.replace("_", "").isalnum():
+        raise ValueError(f"Schema inválido: {schema_name}")
+
+
+def generate_schema_name() -> str:
+    """Genera un schema_name único."""
+    return f"tenant_{uuid4().hex[:16]}"
+
+
+def create_tenant_schema(db: Session, schema_name: str) -> None:
+    """Crea el schema del tenant en PostgreSQL.
+
+    También crea las tablas operativas dentro del schema.
+    """
+    _validate_schema_name(schema_name)
+
+    # Crear schema
+    db.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}"'))
+
+    # Crear tablas operativas dentro del schema
+    # (por ahora solo resources, resources_attributes, resources_taxes)
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."resources" (
+            id UUID PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            resource_type VARCHAR(30) NOT NULL,
+            category_id UUID,
+            subcategory_id UUID,
+            base_unit_id UUID NOT NULL,
+            cost NUMERIC(12, 2),
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."resources_attributes" (
+            id UUID PRIMARY KEY,
+            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id) ON DELETE CASCADE,
+            attribute_id UUID NOT NULL,
+            value TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (resource_id, attribute_id)
+        )
+    """))
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."resources_taxes" (
+            id UUID PRIMARY KEY,
+            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id) ON DELETE CASCADE,
+            tax_id UUID NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (resource_id, tax_id)
+        )
+    """))
+
+    db.flush()
+
+
+def drop_tenant_schema(db: Session, schema_name: str) -> None:
+    """Elimina el schema del tenant. Usar con cuidado."""
+    _validate_schema_name(schema_name)
+    db.execute(text(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE'))
+    db.flush()
+
+
+def create_tenant_with_schema(db: Session, tenant: Tenant) -> Tenant:
+    """Crea el schema del tenant y lo persiste.
+
+    Args:
+        db: sesión SQLAlchemy (sin search_path de tenant, opera en public).
+        tenant: instancia de Tenant (sin schema_name asignado).
+
+    Returns:
+        El tenant con schema_name asignado y persistido.
+    """
+    if not tenant.schema_name:
+        tenant.schema_name = generate_schema_name()
+
+    # 1. Crear el schema en PostgreSQL
+    create_tenant_schema(db, tenant.schema_name)
+
+    # 2. Persistir el tenant en public
+    db.add(tenant)
+    db.flush()
+
+    return tenant
