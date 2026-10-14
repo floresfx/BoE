@@ -52,6 +52,27 @@ from app.schemas.vertical import (
     VerticalResponse,
     VerticalUpdate,
 )
+from app.schemas.resource import (
+    ResourceAttributeInline,
+    ResourceAttributeResponse,
+    ResourceCreate,
+    ResourceListResponse,
+    ResourceResponse,
+    ResourceTaxInline,
+    ResourceTaxResponse,
+    ResourceUpdate,
+)
+from app.schemas.resource_attribute import (
+    ResourceAttributeCreate,
+    ResourceAttributeUpdate,
+    ResourceAttributeResponse as ResourceAttributeResponseStandalone,
+)
+from app.schemas.resource_tax import (
+    ResourceTaxCreate,
+    ResourceTaxResponse as ResourceTaxResponseStandalone,
+)
+
+
 
 __all__ = [
     "BaseSchema",
@@ -88,4 +109,20 @@ __all__ = [
     "PlanCreate",
     "PlanUpdate",
     "PlanResponse",
+    # Resource
+    "ResourceAttributeInline",
+    "ResourceAttributeResponse",
+    "ResourceCreate",
+    "ResourceListResponse",
+    "ResourceResponse",
+    "ResourceTaxInline",
+    "ResourceTaxResponse",
+    "ResourceUpdate",
+    # ResourceAttribute (endpoint dedicado)
+    "ResourceAttributeCreate",
+    "ResourceAttributeUpdate",
+    "ResourceAttributeResponseStandalone",
+    # ResourceTax (endpoint dedicado)
+    "ResourceTaxCreate",
+    "ResourceTaxResponseStandalone",
 ]

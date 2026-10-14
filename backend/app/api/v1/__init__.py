@@ -7,6 +7,8 @@ from app.api.v1 import (
     plans,
     profiles,
     resources,
+    resource_attributes,
+    resource_taxes,
     roles,
     secure_devices,
     tenants,
@@ -26,4 +28,6 @@ api_router.include_router(secure_devices.router)
 api_router.include_router(access_logs.router)
 api_router.include_router(verticals.router)
 api_router.include_router(plans.router)
-api_router.include_router(resources.router)   # ← NUEVO
+api_router.include_router(resources.router)
+api_router.include_router(resource_attributes.router)
+api_router.include_router(resource_taxes.router)
