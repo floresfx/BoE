@@ -70,6 +70,57 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
             UNIQUE (resource_id, tax_id)
         )
     """))
+    
+    # Warehouses
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."warehouses" (
+            id UUID PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            code VARCHAR(20) NOT NULL,
+            address TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (code)
+        )
+    """))
+
+    # Stock lots
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."stock_lots" (
+            id UUID PRIMARY KEY,
+            warehouse_id UUID NOT NULL REFERENCES "{schema_name}".warehouses(id),
+            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id),
+            lot_code VARCHAR(50) NOT NULL,
+            quantity NUMERIC(14, 4) NOT NULL DEFAULT 0,
+            expiration TIMESTAMPTZ,
+            unit_cost NUMERIC(12, 4),
+            received_at TIMESTAMPTZ NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (warehouse_id, resource_id, lot_code)
+        )
+    """))
+
+    # Movements
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."movements" (
+            id UUID PRIMARY KEY,
+            warehouse_id UUID NOT NULL REFERENCES "{schema_name}".warehouses(id),
+            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id),
+            lot_id UUID REFERENCES "{schema_name}".stock_lots(id),
+            movement_type VARCHAR(20) NOT NULL,
+            quantity NUMERIC(14, 4) NOT NULL,
+            unit_cost NUMERIC(12, 4),
+            reference VARCHAR(100),
+            notes TEXT,
+            created_by UUID,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+
+    db.flush()
 
     db.flush()
 

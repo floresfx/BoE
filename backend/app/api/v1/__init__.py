@@ -5,6 +5,7 @@ from app.api.v1 import (
     auth,
     admin,
     catalogs,
+    movements,
     permissions,
     plans,
     profiles,
@@ -15,9 +16,11 @@ from app.api.v1 import (
     resource_taxes,
     roles,
     secure_devices,
+    stock,
     tenants,
     users,
     verticals,
+    warehouses,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -40,3 +43,6 @@ api_router.include_router(catalogs.router)
 api_router.include_router(register.router)
 api_router.include_router(subscription.router)
 api_router.include_router(admin.router)
+api_router.include_router(warehouses.router)
+api_router.include_router(movements.router)
+api_router.include_router(stock.router)

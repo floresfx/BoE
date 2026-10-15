@@ -11,6 +11,7 @@ const navItems = [
   { to: '/configuracion', label: 'Configuración', icon: '⚙️', disabled: true },
   { to: '/catalogs', label: 'Catálogos', icon: '📚', disabled: false },
   { to: '/admin',label: 'Admin SaaS', icon: '⚙️', disabled: false },
+  { to: '/inventory', label: 'Inventario', icon: '📦', disabled: false },
 ]
 
 export function Sidebar() {

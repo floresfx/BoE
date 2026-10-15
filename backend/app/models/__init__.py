@@ -2,10 +2,14 @@ from app.models.access_log import AccessLog
 from app.models.base import Base
 from app.models.base_tenant import TenantBase
 from app.models.operational import (
+    Movement,
+    MOVEMENT_TYPES,
     Resource,
     RESOURCE_TYPES,
     ResourceAttribute,
     ResourceTax,
+    StockLot,
+    Warehouse,
 )
 from app.models.permission import Permission, RolePermission
 from app.models.plan import Plan
@@ -110,4 +114,8 @@ __all__ = [
     "Resource",
     "ResourceAttribute",
     "ResourceTax",
+    "Movement",
+    "MOVEMENT_TYPES",
+    "StockLot",
+    "Warehouse",
 ]
