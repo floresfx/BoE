@@ -4,6 +4,7 @@ type Variant = 'green' | 'gray' | 'red' | 'blue' | 'yellow'
 
 interface Props {
   variant?: Variant
+  className?: string
   children: ReactNode
 }
 
@@ -15,10 +16,14 @@ const variantClasses: Record<Variant, string> = {
   yellow: 'bg-yellow-100 text-yellow-800',
 }
 
-export function Badge({ variant = 'gray', children }: Props) {
+export function Badge({
+  variant = 'gray',
+  className = '',
+  children,
+}: Props) {
   return (
     <span
-      className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${variantClasses[variant]}`}
+      className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${variantClasses[variant]} ${className}`}
     >
       {children}
     </span>

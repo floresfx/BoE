@@ -1,8 +1,13 @@
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
+import {
+  useCategories,
+  useUnits,
+} from '../../hooks/useCatalogs'
 import {
   useCreateResource,
   useDeleteResource,
@@ -13,28 +18,48 @@ import type { Resource, ResourceType } from '../../types/resource'
 import { RESOURCE_TYPES } from '../../types/resource'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ResourceForm, type ResourceFormValues } from './ResourceForm'
+import { ResourceAttributesModal } from './ResourceAttributesModal'
+import { ResourceTaxesModal } from './ResourceTaxesModal'
 
 const typeLabel = (t: ResourceType) =>
   RESOURCE_TYPES.find((x) => x.value === t)?.label ?? t
 
 export function ResourcesList() {
+  const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<ResourceType | ''>('')
+  const [filterCategory, setFilterCategory] = useState<string>('')
   const [filterActive, setFilterActive] = useState<'' | 'true' | 'false'>('true')
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Resource | null>(null)
   const [deleting, setDeleting] = useState<Resource | null>(null)
+  const [managingAttrs, setManagingAttrs] = useState<Resource | null>(null)
+  const [managingTaxes, setManagingTaxes] = useState<Resource | null>(null)
+
+  // Datos maestros para mostrar nombres
+  const { data: units = [] } = useUnits()
+  const { data: categories = [] } = useCategories()
+
+  const unitsMap = useMemo(
+    () => Object.fromEntries(units.map((u) => [u.id, u])),
+    [units],
+  )
+  const categoriesMap = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.id, c])),
+    [categories],
+  )
 
   const params = useMemo(
     () => ({
       search: search || undefined,
       resource_type: filterType || undefined,
+      category_id: filterCategory || undefined,
       is_active:
         filterActive === '' ? undefined : filterActive === 'true',
       limit: 100,
     }),
-    [search, filterType, filterActive],
+    [search, filterType, filterCategory, filterActive],
   )
 
   const { data, isLoading, error } = useResources(params)
@@ -58,7 +83,8 @@ export function ResourcesList() {
   const handleSubmit = async (values: ResourceFormValues) => {
     const payload = {
       ...values,
-      category: values.category || null,
+      category_id: values.category_id || null,
+      subcategory_id: values.subcategory_id || null,
       cost: values.cost || null,
     }
     try {
@@ -70,7 +96,11 @@ export function ResourcesList() {
       setFormOpen(false)
       setEditing(null)
     } catch (err) {
-      alert('Error al guardar: ' + (err as Error).message)
+      const apiErr = err as { response?: { data?: { detail?: string } } }
+      alert(
+        'Error al guardar: ' +
+          (apiErr.response?.data?.detail ?? (err as Error).message),
+      )
     }
   }
 
@@ -82,6 +112,10 @@ export function ResourcesList() {
     } catch (err) {
       alert('Error al desactivar: ' + (err as Error).message)
     }
+  }
+
+  const refreshResources = () => {
+    qc.invalidateQueries({ queryKey: ['resources'] })
   }
 
   return (
@@ -96,7 +130,7 @@ export function ResourcesList() {
         <Button onClick={handleNew}>+ Nuevo recurso</Button>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="bg-white rounded-lg shadow p-4 grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Input
           placeholder="Buscar por nombre..."
           value={search}
@@ -112,6 +146,17 @@ export function ResourcesList() {
           {RESOURCE_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+        >
+          <option value="">Todas las categorías</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
             </option>
           ))}
         </Select>
@@ -166,48 +211,72 @@ export function ResourcesList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {items.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">
-                    {r.name}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {typeLabel(r.resource_type)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {r.category || '—'}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{r.base_unit}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">
-                    {r.cost ?? '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {r.is_active ? (
-                      <Badge variant="green">Activo</Badge>
-                    ) : (
-                      <Badge variant="gray">Inactivo</Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right space-x-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleEdit(r)}
-                    >
-                      Editar
-                    </Button>
-                    {r.is_active && (
+              {items.map((r) => {
+                const cat = r.category_id
+                  ? categoriesMap[r.category_id]
+                  : null
+                const unit = unitsMap[r.base_unit_id]
+                return (
+                  <tr key={r.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      {r.name}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {typeLabel(r.resource_type)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {cat?.name ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {unit ? `${unit.name} (${unit.symbol})` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-600">
+                      {r.cost ?? '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {r.is_active ? (
+                        <Badge variant="green">Activo</Badge>
+                      ) : (
+                        <Badge variant="gray">Inactivo</Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                       <Button
                         size="sm"
-                        variant="danger"
-                        onClick={() => setDeleting(r)}
+                        variant="secondary"
+                        onClick={() => setManagingAttrs(r)}
+                        title="Gestionar atributos"
                       >
-                        Desactivar
+                        Atributos ({r.attributes.length})
                       </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setManagingTaxes(r)}
+                        title="Gestionar impuestos"
+                      >
+                        Impuestos ({r.taxes.length})
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleEdit(r)}
+                      >
+                        Editar
+                      </Button>
+                      {r.is_active && (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => setDeleting(r)}
+                        >
+                          Desactivar
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
@@ -236,6 +305,20 @@ export function ResourcesList() {
         isLoading={deleteMutation.isPending}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleting(null)}
+      />
+
+      <ResourceAttributesModal
+        open={Boolean(managingAttrs)}
+        resource={managingAttrs}
+        onClose={() => setManagingAttrs(null)}
+        onChanged={refreshResources}
+      />
+
+      <ResourceTaxesModal
+        open={Boolean(managingTaxes)}
+        resource={managingTaxes}
+        onClose={() => setManagingTaxes(null)}
+        onChanged={refreshResources}
       />
     </div>
   )

@@ -6,6 +6,11 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
 import { Select } from '../../components/ui/Select'
+import {
+  useCategories,
+  useSubcategories,
+  useUnits,
+} from '../../hooks/useCatalogs'
 import type { Resource } from '../../types/resource'
 import { RESOURCE_TYPES } from '../../types/resource'
 
@@ -21,8 +26,9 @@ const schema = z.object({
     'recurso_humano',
     'recurso_fisico',
   ]),
-  category: z.string().max(100).optional().or(z.literal('')),
-  base_unit: z.string().min(1, 'Requerido').max(20),
+  category_id: z.string().uuid().optional().or(z.literal('')),
+  subcategory_id: z.string().uuid().optional().or(z.literal('')),
+  base_unit_id: z.string().uuid('Selecciona una unidad'),
   cost: z
     .string()
     .optional()
@@ -53,31 +59,45 @@ export function ResourceForm({
 }: Props) {
   const isEditing = Boolean(resource)
 
+  // Datos maestros
+  const { data: units = [], isLoading: loadingUnits } = useUnits()
+  const { data: categories = [], isLoading: loadingCategories } =
+    useCategories()
+
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<ResourceFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
       resource_type: 'materia_prima',
-      category: '',
-      base_unit: 'kg',
+      category_id: '',
+      subcategory_id: '',
+      base_unit_id: '',
       cost: '',
       is_active: true,
     },
   })
 
+  // Observar category_id para cargar subcategorías
+  const selectedCategoryId = watch('category_id')
+  const { data: subcategories = [], isLoading: loadingSubcategories } =
+    useSubcategories(selectedCategoryId || undefined)
+
+  // Resetear formulario al abrir
   useEffect(() => {
     if (!open) return
     if (resource) {
       reset({
         name: resource.name,
         resource_type: resource.resource_type,
-        category: resource.category ?? '',
-        base_unit: resource.base_unit,
+        category_id: resource.category_id ?? '',
+        subcategory_id: resource.subcategory_id ?? '',
+        base_unit_id: resource.base_unit_id,
         cost: resource.cost ?? '',
         is_active: resource.is_active,
       })
@@ -85,8 +105,9 @@ export function ResourceForm({
       reset({
         name: '',
         resource_type: 'materia_prima',
-        category: '',
-        base_unit: 'kg',
+        category_id: '',
+        subcategory_id: '',
+        base_unit_id: '',
         cost: '',
         is_active: true,
       })
@@ -139,20 +160,48 @@ export function ResourceForm({
         </Select>
 
         <div className="grid grid-cols-2 gap-4">
-          <Input
+          <Select
             label="Categoría (opcional)"
-            placeholder="harinas"
-            {...register('category')}
-            error={errors.category?.message}
-          />
+            {...register('category_id')}
+            error={errors.category_id?.message}
+            disabled={loadingCategories}
+          >
+            <option value="">— Sin categoría —</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
 
-          <Input
-            label="Unidad base"
-            placeholder="kg, unidad, hora..."
-            {...register('base_unit')}
-            error={errors.base_unit?.message}
-          />
+          <Select
+            label="Subcategoría (opcional)"
+            {...register('subcategory_id')}
+            error={errors.subcategory_id?.message}
+            disabled={!selectedCategoryId || loadingSubcategories}
+          >
+            <option value="">— Sin subcategoría —</option>
+            {subcategories.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </Select>
         </div>
+
+        <Select
+          label="Unidad base"
+          {...register('base_unit_id')}
+          error={errors.base_unit_id?.message}
+          disabled={loadingUnits}
+        >
+          <option value="">— Selecciona una unidad —</option>
+          {units.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name} ({u.symbol})
+            </option>
+          ))}
+        </Select>
 
         <Input
           label="Costo por unidad (opcional)"
