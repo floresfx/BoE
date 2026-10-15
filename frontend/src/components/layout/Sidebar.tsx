@@ -10,6 +10,7 @@ const navItems = [
   { to: '/revisar', label: 'Revisar', icon: '🔍', disabled: true },
   { to: '/configuracion', label: 'Configuración', icon: '⚙️', disabled: true },
   { to: '/catalogs', label: 'Catálogos', icon: '📚', disabled: false },
+  { to: '/admin',label: 'Admin SaaS', icon: '⚙️', disabled: false },
 ]
 
 export function Sidebar() {

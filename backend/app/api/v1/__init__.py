@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     access_logs,
     auth,
+    admin,
     catalogs,
     permissions,
     plans,
@@ -38,3 +39,4 @@ api_router.include_router(resource_taxes.router)
 api_router.include_router(catalogs.router)
 api_router.include_router(register.router)
 api_router.include_router(subscription.router)
+api_router.include_router(admin.router)

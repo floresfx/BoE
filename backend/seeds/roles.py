@@ -4,6 +4,11 @@ from app.models import Role
 
 ROLES = [
     {
+        "name": "SuperAdmin",
+        "description": "Administrador del SaaS. Acceso total al panel de administración.",
+        "is_system": True,
+    },
+    {
         "name": "Admin",
         "description": "Control total del tenant",
         "is_system": True,

@@ -88,3 +88,34 @@ def get_current_tenant(
 
     db.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
     return tenant
+
+    from app.models import Role, UserRole
+
+from app.models import Role, UserRole
+
+def require_superadmin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Verifica que el usuario tenga el rol SuperAdmin.
+
+    Uso:
+        @router.get("/admin/...")
+        def endpoint(user: User = Depends(require_superadmin)):
+            ...
+    """
+    has_role = (
+        db.query(UserRole)
+        .join(Role, Role.id == UserRole.role_id)
+        .filter(
+            UserRole.user_id == current_user.id,
+            Role.name == "SuperAdmin",
+        )
+        .first()
+    )
+    if not has_role:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requiere rol SuperAdmin",
+        )
+    return current_user

@@ -8,6 +8,7 @@ import { Register } from './pages/Register'
 import { SelectPlan } from './pages/SelectPlan'
 import { ResourcesList } from './pages/resources/ResourcesList'
 import { Catalogs } from './pages/Catalogs'
+import { Admin } from './pages/Admin'
 
 export function App() {
   return (
@@ -39,6 +40,7 @@ export function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="resources" element={<ResourcesList />} />
         <Route path="catalogs" element={<Catalogs />} />
+        <Route path="admin" element={<Admin />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
