@@ -5,6 +5,8 @@ import {
   useAvailablePlans,
   useSelectPlan,
 } from '../hooks/useSubscription'
+import { useSearchParams } from 'react-router-dom'
+import { useCurrentSubscription } from '../hooks/useSubscription'
 
 export function SelectPlan() {
   const navigate = useNavigate()
@@ -12,6 +14,9 @@ export function SelectPlan() {
   const selectPlan = useSelectPlan()
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [searchParams] = useSearchParams()
+  const isChangeMode = searchParams.get('mode') === 'change'
+  const { data: currentSub } = useCurrentSubscription()
 
   const handleSelect = async (planId: string) => {
     setError(null)
@@ -33,10 +38,12 @@ export function SelectPlan() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-slate-900">
-            Elige tu plan
+            {isChangeMode ? 'Cambiar plan' : 'Elige tu plan'}
           </h1>
           <p className="text-slate-500 mt-2">
-            Comienza con 14 días gratis en los planes MPR. Cancela cuando quieras.
+            {isChangeMode
+              ? 'Puedes cambiar de plan en cualquier momento.'
+              : 'Comienza con 14 días gratis en los planes MPR. Cancela cuando quieras.'}
           </p>
         </div>
 
@@ -54,6 +61,7 @@ export function SelectPlan() {
               const isMPR = plan.code.startsWith('mpr_')
               const isSelected = selected === plan.id
               const isPending = selectPlan.isPending && isSelected
+              const isCurrent = isChangeMode && currentSub?.plan_id === plan.id
 
               return (
                 <div
@@ -112,10 +120,16 @@ export function SelectPlan() {
 
                   <Button
                     onClick={() => handleSelect(plan.id)}
-                    disabled={isPending || selectPlan.isPending}
+                    disabled={isPending || selectPlan.isPending || isCurrent}
                     variant={isMPR ? 'primary' : 'secondary'}
                   >
-                    {isPending ? 'Activando...' : 'Seleccionar'}
+                    {isCurrent
+                      ? 'Plan actual'
+                      : isPending
+                        ? 'Activando...'
+                        : isChangeMode
+                          ? 'Cambiar a este plan'
+                          : 'Seleccionar'}
                   </Button>
                 </div>
               )

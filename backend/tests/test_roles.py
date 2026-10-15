@@ -5,18 +5,21 @@ from app.models import Permission, Role, Tenant
 
 def test_create_role(client: TestClient, tenant: Tenant):
     """Test: crear un rol."""
+    from uuid import uuid4
+
+    unique_name = f"TestRole_{uuid4().hex[:8]}"
     response = client.post(
         "/api/v1/roles",
         json={
             "tenant_id": str(tenant.id),
-            "name": "Admin",
+            "name": unique_name,
             "description": "Administrador",
             "permission_ids": [],
         },
     )
-    assert response.status_code == 201
+    assert response.status_code == 201, response.json()
     data = response.json()
-    assert data["name"] == "Admin"
+    assert data["name"] == unique_name
 
 
 def test_create_role_con_permisos(

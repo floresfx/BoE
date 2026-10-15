@@ -19,7 +19,11 @@ from app.core.database import get_db
 from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models import (
+    Attribute,
+    AttributeType,
     Base,
+    Category,
+    Country,
     Currency,
     Permission,
     Plan,
@@ -27,7 +31,12 @@ from app.models import (
     PlanLimit,
     Profile,
     Role,
+    Subcategory,
+    Tax,
     Tenant,
+    Timezone,
+    Unit,
+    UnitCategory,
     User,
     Vertical,
 )
@@ -414,3 +423,211 @@ def country(db: Session) -> "Country":
     db.add(c)
     db.flush()
     return c
+
+
+@pytest.fixture
+def cleanup_register_schemas(db: Session):
+    """Fixture que limpia los schemas creados por tests de register.
+
+    Uso:
+        def test_x(cleanup_register_schemas, ...):
+            ...
+            cleanup_register_schemas.append("tenant_abc123")
+    """
+    schemas_to_drop: list[str] = []
+    yield schemas_to_drop
+    # Cleanup al final del test
+    for schema in schemas_to_drop:
+        try:
+            db.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+        except Exception:
+            pass
+    db.commit()
+
+    # ---------------------------------------------------------------------------
+# Seeds mínimos para boe_test (país VE, currency USD, timezone, etc.)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session", autouse=True)
+def _seed_minimal_data(_setup_database):
+    """Carga datos maestros mínimos en boe_test (una vez por sesión).
+
+    Sin esto, los tests de register y subscription fallan.
+    """
+    from decimal import Decimal
+
+    from app.models import (
+        Country,
+        Currency,
+        Feature,
+        Plan,
+        PlanFeature,
+        PlanLimit,
+        Role,
+        Timezone,
+        Vertical,
+    )
+
+    session = TestingSessionLocal()
+    try:
+        # --- Timezone Venezuela ---
+        tz = session.query(Timezone).filter(Timezone.code == "America/Caracas").first()
+        if not tz:
+            tz = Timezone(
+                code="America/Caracas",
+                friendly_name="Venezuela",
+                utc_offset="UTC-4",
+            )
+            session.add(tz)
+            session.flush()
+
+        # --- Currency USD ---
+        usd = session.query(Currency).filter(Currency.code == "USD").first()
+        if not usd:
+            usd = Currency(
+                code="USD",
+                name="Dólar estadounidense",
+                symbol="$",
+                decimals=2,
+                is_base=True,
+            )
+            session.add(usd)
+            session.flush()
+
+        # --- Country VE ---
+        ve = session.query(Country).filter(Country.code == "VE").first()
+        if not ve:
+            ve = Country(
+                code="VE",
+                name="Venezuela",
+                timezone_id=tz.id,
+                currency_id=usd.id,
+                phone_prefix="+58",
+            )
+            session.add(ve)
+            session.flush()
+
+        # --- Vertical clínicas_generales ---
+        v = session.query(Vertical).filter(Vertical.code == "clinicas_generales").first()
+        if not v:
+            v = Vertical(
+                code="clinicas_generales",
+                name="Clínicas generales",
+                description="Clínicas médicas generales",
+            )
+            session.add(v)
+            session.flush()
+
+        # --- Rol Admin ---
+        admin_role = session.query(Role).filter(Role.name == "Admin").first()
+        if not admin_role:
+            admin_role = Role(
+                name="Admin",
+                description="Administrador",
+                is_system=True,
+            )
+            session.add(admin_role)
+            session.flush()
+
+        # --- Features mínimas ---
+        feature_codes = [
+            "inventario",
+            "planificacion",
+            "marketplace",
+            "notificaciones",
+        ]
+        features: dict[str, Feature] = {}
+        for code in feature_codes:
+            f = session.query(Feature).filter(Feature.code == code).first()
+            if not f:
+                f = Feature(
+                    code=code,
+                    name=code.title(),
+                    description=f"Feature {code}",
+                    applies_to="both",
+                )
+                session.add(f)
+                session.flush()
+            features[code] = f
+
+        # --- Planes ---
+        plans_data = [
+            {
+                "code": "mpr_base",
+                "name": "MPR Base",
+                "price": Decimal("39.00"),
+                "interval": "monthly",
+                "trial_days": 14,
+                "features": ["inventario", "planificacion", "notificaciones"],
+                "limits": {"recursos": 50, "usuarios": 3, "paquetes": 10},
+            },
+            {
+                "code": "mpr_plus",
+                "name": "MPR Plus",
+                "price": Decimal("79.00"),
+                "interval": "monthly",
+                "trial_days": 14,
+                "features": ["inventario", "planificacion", "marketplace", "notificaciones"],
+                "limits": {"recursos": None, "usuarios": 10, "paquetes": None},
+            },
+            {
+                "code": "mp_gratuito",
+                "name": "Marketplace Gratuito",
+                "price": Decimal("0.00"),
+                "interval": "monthly",
+                "trial_days": 0,
+                "features": ["marketplace", "notificaciones"],
+                "limits": {"productos": 10, "ventas_mes": 3, "leads_mes": 3},
+            },
+            {
+                "code": "mp_basico",
+                "name": "Marketplace Basico",
+                "price": Decimal("19.00"),
+                "interval": "monthly",
+                "trial_days": 0,
+                "features": ["marketplace", "notificaciones"],
+                "limits": {"productos": 100, "ventas_mes": 20, "leads_mes": 10},
+            },
+            {
+                "code": "mp_plus",
+                "name": "Marketplace Plus",
+                "price": Decimal("35.00"),
+                "interval": "monthly",
+                "trial_days": 0,
+                "features": ["marketplace", "notificaciones"],
+                "limits": {"productos": None, "ventas_mes": 40, "leads_mes": 30},
+            },
+        ]
+
+        for pdata in plans_data:
+            existing = session.query(Plan).filter(Plan.code == pdata["code"]).first()
+            if existing:
+                continue
+            plan = Plan(
+                code=pdata["code"],
+                name=pdata["name"],
+                price=pdata["price"],
+                currency_id=usd.id,
+                interval=pdata["interval"],
+                trial_days=pdata["trial_days"],
+                is_active=True,
+            )
+            session.add(plan)
+            session.flush()
+
+            # Features
+            for fcode in pdata["features"]:
+                feature = features.get(fcode)
+                if feature:
+                    session.add(
+                        PlanFeature(plan_id=plan.id, feature_id=feature.id)
+                    )
+            # Limits
+            for lcode, lvalue in pdata["limits"].items():
+                session.add(
+                    PlanLimit(plan_id=plan.id, limit_code=lcode, value=lvalue)
+                )
+
+        session.commit()
+    finally:
+        session.close()
