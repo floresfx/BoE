@@ -9,6 +9,7 @@ const navItems = [
   { to: '/suministro', label: 'Suministro', icon: '🚚', disabled: true },
   { to: '/revisar', label: 'Revisar', icon: '🔍', disabled: true },
   { to: '/configuracion', label: 'Configuración', icon: '⚙️', disabled: true },
+  { to: '/catalogs', label: 'Catálogos', icon: '📚', disabled: false },
 ]
 
 export function Sidebar() {

@@ -7,6 +7,7 @@ import { NotFound } from './pages/NotFound'
 import { Register } from './pages/Register'
 import { SelectPlan } from './pages/SelectPlan'
 import { ResourcesList } from './pages/resources/ResourcesList'
+import { Catalogs } from './pages/Catalogs'
 
 export function App() {
   return (
@@ -37,6 +38,7 @@ export function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="resources" element={<ResourcesList />} />
+        <Route path="catalogs" element={<Catalogs />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
