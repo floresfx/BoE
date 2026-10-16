@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.deps import get_current_tenant
 from app.core.database import get_db
 from app.models import (
+    Currency,
     Resource,
     Supplier,
     SupplierResource,
@@ -17,6 +18,7 @@ from app.schemas.supplier import (
     SupplierCreate,
     SupplierListResponse,
     SupplierResourceResponse,
+    SupplierResourceUpdate,
     SupplierResponse,
     SupplierUpdate,
 )
@@ -40,17 +42,27 @@ def _get_supplier_or_404(db: Session, supplier_id: UUID) -> Supplier:
     return s
 
 
+def _build_resource_response(db: Session, sr: SupplierResource) -> SupplierResourceResponse:
+    resource = db.query(Resource).filter(Resource.id == sr.resource_id).first()
+    currency = (
+        db.query(Currency).filter(Currency.id == sr.currency_id).first()
+        if sr.currency_id
+        else None
+    )
+    return SupplierResourceResponse(
+        resource_id=sr.resource_id,
+        resource_name=resource.name if resource else "",
+        unit_price=sr.unit_price,
+        currency_id=sr.currency_id,
+        currency_code=currency.code if currency else None,
+        lead_time_days=sr.lead_time_days,
+        min_quantity=sr.min_quantity,
+        valid_until=sr.valid_until,
+        notes=sr.notes,
+    )
+
+
 def _build_response(db: Session, supplier: Supplier) -> SupplierResponse:
-    """Construye la respuesta con nombre de cada recurso."""
-    resources_data = []
-    for sr in supplier.resources:
-        resource = db.query(Resource).filter(Resource.id == sr.resource_id).first()
-        if resource:
-            resources_data.append({
-                "resource_id": sr.resource_id,
-                "resource_name": resource.name,
-                "notes": sr.notes,
-            })
     return SupplierResponse(
         id=supplier.id,
         code=supplier.code,
@@ -64,12 +76,12 @@ def _build_response(db: Session, supplier: Supplier) -> SupplierResponse:
         is_active=supplier.is_active,
         created_at=supplier.created_at,
         updated_at=supplier.updated_at,
-        resources=resources_data,
+        resources=[_build_resource_response(db, sr) for sr in supplier.resources],
     )
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Endpoints Supplier
 # ---------------------------------------------------------------------------
 
 @router.get("", response_model=SupplierListResponse)
@@ -81,7 +93,6 @@ def list_suppliers(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Lista proveedores con filtros opcionales."""
     query = db.query(Supplier).options(joinedload(Supplier.resources))
     if is_active is not None:
         query = query.filter(Supplier.is_active == is_active)
@@ -101,43 +112,38 @@ def get_supplier(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Obtiene un proveedor por ID."""
     s = _get_supplier_or_404(db, supplier_id)
     return _build_response(db, s)
 
 
-@router.post(
-    "", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)
 def create_supplier(
     data: SupplierCreate,
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Crea un proveedor con sus recursos inline."""
-    # Validar code único
     existing = db.query(Supplier).filter(Supplier.code == data.code).first()
     if existing:
         raise HTTPException(400, "Ya existe un proveedor con ese código")
 
-    # Crear supplier (sin los resources)
     supplier_data = data.model_dump(exclude={"resources"})
     supplier = Supplier(**supplier_data)
     db.add(supplier)
     db.flush()
 
-    # Añadir recursos
     for r in data.resources:
-        # Validar que el recurso existe
         resource = db.query(Resource).filter(Resource.id == r.resource_id).first()
         if not resource:
-            raise HTTPException(
-                400, f"Recurso no encontrado: {r.resource_id}"
-            )
+            raise HTTPException(400, f"Recurso no encontrado: {r.resource_id}")
         db.add(
             SupplierResource(
                 supplier_id=supplier.id,
                 resource_id=r.resource_id,
+                unit_price=r.unit_price,
+                currency_id=r.currency_id,
+                lead_time_days=r.lead_time_days,
+                min_quantity=r.min_quantity,
+                valid_until=r.valid_until,
                 notes=r.notes,
             )
         )
@@ -155,7 +161,6 @@ def update_supplier(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Actualiza un proveedor (sin tocar sus recursos)."""
     supplier = _get_supplier_or_404(db, supplier_id)
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(supplier, key, value)
@@ -171,14 +176,13 @@ def delete_supplier(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Soft delete: marca is_active=False."""
     supplier = _get_supplier_or_404(db, supplier_id)
     supplier.is_active = False
     db.flush()
 
 
 # ---------------------------------------------------------------------------
-# Gestión de recursos del proveedor
+# Endpoints de recursos del proveedor
 # ---------------------------------------------------------------------------
 
 @router.post(
@@ -188,14 +192,13 @@ def delete_supplier(
 )
 def add_supplier_resource(
     supplier_id: UUID,
-    data: dict,  # {"resource_id": UUID, "notes": str | None}
+    data: dict,
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Añade un recurso a un proveedor."""
     from uuid import UUID as UUIDType
 
-    supplier = _get_supplier_or_404(db, supplier_id)
+    _get_supplier_or_404(db, supplier_id)
     resource_id = data.get("resource_id")
     if not resource_id:
         raise HTTPException(400, "resource_id es requerido")
@@ -223,16 +226,45 @@ def add_supplier_resource(
     sr = SupplierResource(
         supplier_id=supplier_id,
         resource_id=resource_uuid,
+        unit_price=data.get("unit_price"),
+        currency_id=data.get("currency_id"),
+        lead_time_days=data.get("lead_time_days"),
+        min_quantity=data.get("min_quantity"),
+        valid_until=data.get("valid_until"),
         notes=data.get("notes"),
     )
     db.add(sr)
     db.flush()
     db.refresh(sr)
-    return SupplierResourceResponse(
-        resource_id=sr.resource_id,
-        resource_name=resource.name,
-        notes=sr.notes,
+    return _build_resource_response(db, sr)
+
+
+@router.put(
+    "/{supplier_id}/resources/{resource_id}",
+    response_model=SupplierResourceResponse,
+)
+def update_supplier_resource(
+    supplier_id: UUID,
+    resource_id: UUID,
+    data: SupplierResourceUpdate,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    sr = (
+        db.query(SupplierResource)
+        .filter(
+            SupplierResource.supplier_id == supplier_id,
+            SupplierResource.resource_id == resource_id,
+        )
+        .first()
     )
+    if not sr:
+        raise HTTPException(404, "Relación no encontrada")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(sr, key, value)
+    db.flush()
+    db.refresh(sr)
+    return _build_resource_response(db, sr)
 
 
 @router.delete(
@@ -245,7 +277,6 @@ def remove_supplier_resource(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Quita un recurso de un proveedor."""
     sr = (
         db.query(SupplierResource)
         .filter(

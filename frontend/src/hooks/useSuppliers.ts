@@ -124,3 +124,26 @@ export function useRemoveSupplierResource() {
     },
   })
 }
+export function useUpdateSupplierResource() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      supplierId,
+      resourceId,
+      payload,
+    }: {
+      supplierId: string
+      resourceId: string
+      payload: import('../types/supplier').SupplierResourceUpdate
+    }) => {
+      const { data } = await api.put(
+        `/suppliers/${supplierId}/resources/${resourceId}`,
+        payload,
+      )
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: supplierKeys.all })
+    },
+  })
+}

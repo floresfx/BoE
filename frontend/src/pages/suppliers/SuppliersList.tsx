@@ -5,7 +5,6 @@ import { Input } from '../../components/ui/Input'
 import {
   useDeleteSupplier,
   useSuppliers,
-  useUpdateSupplier,
 } from '../../hooks/useSuppliers'
 import type { Supplier } from '../../types/supplier'
 import { ConfirmDialog } from '../resources/ConfirmDialog'
@@ -25,7 +24,6 @@ export function SuppliersList() {
     is_active: filterActive === '' ? undefined : filterActive === 'true',
   })
   const deleteMutation = useDeleteSupplier()
-  const _updateMutation = useUpdateSupplier()
 
   const items = data?.items ?? []
   const total = data?.total ?? 0

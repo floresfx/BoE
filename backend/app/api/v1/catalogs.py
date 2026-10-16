@@ -144,3 +144,23 @@ def list_countries(db: Session = Depends(get_db)):
         {"code": c.code, "name": c.name, "phone_prefix": c.phone_prefix}
         for c in countries
     ]
+
+@router.get("/currencies")
+def list_currencies(db: Session = Depends(get_db)):
+    """Lista todas las monedas activas."""
+    from app.models import Currency
+    currencies = (
+        db.query(Currency)
+        .filter(Currency.is_active.is_(True))
+        .order_by(Currency.code)
+        .all()
+    )
+    return [
+        {
+            "id": str(c.id),
+            "code": c.code,
+            "name": c.name,
+            "symbol": c.symbol,
+        }
+        for c in currencies
+    ]

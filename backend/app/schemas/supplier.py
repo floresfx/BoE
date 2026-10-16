@@ -1,6 +1,7 @@
 """Schemas Pydantic para Supplier."""
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -14,6 +15,11 @@ from app.schemas.common import BaseSchema
 
 class SupplierResourceInline(BaseModel):
     resource_id: UUID
+    unit_price: Decimal | None = Field(None, ge=0)
+    currency_id: UUID | None = None
+    lead_time_days: int | None = Field(None, ge=0)
+    min_quantity: Decimal | None = Field(None, ge=0)
+    valid_until: datetime | None = None
     notes: str | None = None
 
 
@@ -55,9 +61,13 @@ class SupplierUpdate(BaseModel):
 class SupplierResourceResponse(BaseModel):
     resource_id: UUID
     resource_name: str
+    unit_price: Decimal | None
+    currency_id: UUID | None
+    currency_code: str | None
+    lead_time_days: int | None
+    min_quantity: Decimal | None
+    valid_until: datetime | None
     notes: str | None
-
-    model_config = {"from_attributes": True}
 
 
 class SupplierResponse(SupplierBase):
@@ -72,3 +82,13 @@ class SupplierResponse(SupplierBase):
 class SupplierListResponse(BaseSchema):
     items: list[SupplierResponse]
     total: int
+
+
+class SupplierResourceUpdate(BaseModel):
+    """Para actualizar solo la oferta de un recurso existente."""
+    unit_price: Decimal | None = Field(None, ge=0)
+    currency_id: UUID | None = None
+    lead_time_days: int | None = Field(None, ge=0)
+    min_quantity: Decimal | None = Field(None, ge=0)
+    valid_until: datetime | None = None
+    notes: str | None = None

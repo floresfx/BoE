@@ -212,3 +212,114 @@ def test_aislamiento_suppliers(
     names_b = [s["name"] for s in list_b["items"]]
     assert "Proveedor B" in names_b
     assert "Proveedor A" not in names_b
+
+    # ---------------------------------------------------------------------------
+# Tests de ofertas
+# ---------------------------------------------------------------------------
+
+def test_add_resource_with_offer(
+    client: TestClient, tenant_sup, user_factory, token_for_user, unit
+):
+    """Añadir un recurso con datos de oferta."""
+    import pytest
+
+    # Necesitamos un recurso en el tenant
+    user, _ = user_factory(tenant_sup)
+    token = token_for_user(user)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Crear un recurso
+    from uuid import uuid4
+    resource_response = client.post(
+        "/api/v1/resources",
+        headers=headers,
+        json={
+            "name": f"Recurso {uuid4().hex[:6]}",
+            "resource_type": "materia_prima",
+            "base_unit_id": str(unit.id),
+        },
+    )
+    assert resource_response.status_code == 201, resource_response.json()
+    resource_id = resource_response.json()["id"]
+
+    # Crear supplier
+    supplier_response = client.post(
+        "/api/v1/suppliers",
+        headers=headers,
+        json={
+            "code": f"PROV-{uuid4().hex[:6]}",
+            "name": "Proveedor Test",
+        },
+    )
+    assert supplier_response.status_code == 201
+    supplier_id = supplier_response.json()["id"]
+
+    # Añadir recurso con oferta
+    response = client.post(
+        f"/api/v1/suppliers/{supplier_id}/resources",
+        headers=headers,
+        json={
+            "resource_id": resource_id,
+            "unit_price": "5.50",
+            "lead_time_days": 3,
+            "min_quantity": "10",
+        },
+    )
+    assert response.status_code == 201, response.json()
+    data = response.json()
+    assert data["resource_id"] == resource_id
+    assert data["unit_price"] == "5.5000"
+    assert data["lead_time_days"] == 3
+    assert data["min_quantity"] == "10.0000"
+
+
+def _create_operational_tables(db: Session, schema: str) -> None:
+    """Crea las tablas operativas necesarias para tests."""
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema}"."resources" (
+            id UUID PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            resource_type VARCHAR(30) NOT NULL,
+            category_id UUID,
+            subcategory_id UUID,
+            base_unit_id UUID NOT NULL,
+            cost NUMERIC(12, 2),
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema}"."suppliers" (
+            id UUID PRIMARY KEY,
+            code VARCHAR(30) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            tax_id VARCHAR(50),
+            email VARCHAR(255),
+            phone VARCHAR(50),
+            address TEXT,
+            contact_name VARCHAR(200),
+            notes TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (code)
+        )
+    """))
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema}"."supplier_resources" (
+            id UUID PRIMARY KEY,
+            supplier_id UUID NOT NULL REFERENCES "{schema}".suppliers(id) ON DELETE CASCADE,
+            resource_id UUID NOT NULL REFERENCES "{schema}".resources(id) ON DELETE CASCADE,
+            unit_price NUMERIC(12, 4),
+            currency_id UUID,
+            lead_time_days INTEGER,
+            min_quantity NUMERIC(14, 4),
+            valid_until TIMESTAMPTZ,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (supplier_id, resource_id)
+        )
+    """))
+    db.flush()
