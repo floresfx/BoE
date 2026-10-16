@@ -22,6 +22,7 @@ from app.api.v1 import (
     verticals,
     warehouses,
     suppliers,
+    bundles,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -48,3 +49,4 @@ api_router.include_router(warehouses.router)
 api_router.include_router(movements.router)
 api_router.include_router(stock.router)
 api_router.include_router(suppliers.router)
+api_router.include_router(bundles.router)

@@ -1,4 +1,11 @@
-"""Modelo Bundle — paquete de recursos."""
+"""Modelos Bundle y BundleComponent.
+
+Un Bundle es un paquete de recursos con cantidades específicas.
+Ejemplo: "Pan artesanal - lote 100 unidades" contiene:
+- 10 kg de harina
+- 0.5 kg de levadura
+- 1 kg de sal
+"""
 
 from decimal import Decimal
 from uuid import UUID
@@ -56,13 +63,14 @@ class BundleComponent(TenantBase, UUIDMixin, TimestampMixin):
             name="uq_bundle_component",
         ),
         Index("ix_bundle_component_bundle", "bundle_id"),
+        Index("ix_bundle_component_resource", "resource_id"),
     )
 
     bundle_id: Mapped[UUID] = mapped_column(
         ForeignKey("bundles.id", ondelete="CASCADE"), nullable=False
     )
     resource_id: Mapped[UUID] = mapped_column(
-        ForeignKey("resources.id"), nullable=False
+        ForeignKey("resources.id", ondelete="CASCADE"), nullable=False
     )
     quantity: Mapped[Decimal] = mapped_column(
         Numeric(14, 4), nullable=False

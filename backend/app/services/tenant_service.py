@@ -150,6 +150,33 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
             UNIQUE (supplier_id, resource_id)
         )
     """))
+        # Bundles
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."bundles" (
+            id UUID PRIMARY KEY,
+            code VARCHAR(50) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            category_id UUID,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (code)
+        )
+    """))
+
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."bundle_components" (
+            id UUID PRIMARY KEY,
+            bundle_id UUID NOT NULL REFERENCES "{schema_name}".bundles(id) ON DELETE CASCADE,
+            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id) ON DELETE CASCADE,
+            quantity NUMERIC(14, 4) NOT NULL,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (bundle_id, resource_id)
+        )
+    """))
 
     db.flush()
 

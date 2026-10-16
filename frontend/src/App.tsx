@@ -11,6 +11,7 @@ import { Catalogs } from './pages/Catalogs'
 import { Admin } from './pages/Admin'
 import { Inventory } from './pages/inventory/Inventory'
 import { SuppliersList } from './pages/suppliers/SuppliersList'
+import { BundlesList } from './pages/bundles/BundlesList'
 
 export function App() {
   return (
@@ -45,6 +46,7 @@ export function App() {
         <Route path="inventory" element={<Inventory />} />
         <Route path="admin" element={<Admin />} />
         <Route path="suppliers" element={<SuppliersList />} />
+        <Route path="bundles" element={<BundlesList />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

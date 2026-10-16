@@ -23,6 +23,7 @@ export function useResources(params: ResourceListParams = {}) {
       })
       return data
     },
+    staleTime: 0, // siempre recargar al montar
   })
 }
 

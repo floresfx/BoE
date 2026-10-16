@@ -2,6 +2,8 @@ from app.models.access_log import AccessLog
 from app.models.base import Base
 from app.models.base_tenant import TenantBase
 from app.models.operational import (
+    Bundle,
+    BundleComponent,
     Movement,
     MOVEMENT_TYPES,
     Resource,
@@ -122,4 +124,6 @@ __all__ = [
     "Warehouse",
     "Supplier",
     "SupplierResource",
+    "Bundle",
+    "BundleComponent",
 ]
