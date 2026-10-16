@@ -12,6 +12,7 @@ const navItems = [
   { to: '/catalogs', label: 'Catálogos', icon: '📚', disabled: false },
   { to: '/admin',label: 'Admin SaaS', icon: '⚙️', disabled: false },
   { to: '/inventory', label: 'Inventario', icon: '📦', disabled: false },
+  { to: '/suppliers', label: 'Proveedores', icon: '🏭', disabled: false },
 ]
 
 export function Sidebar() {

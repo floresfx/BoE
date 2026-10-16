@@ -120,6 +120,37 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
         )
     """))
 
+    # Suppliers
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."suppliers" (
+            id UUID PRIMARY KEY,
+            code VARCHAR(30) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            tax_id VARCHAR(50),
+            email VARCHAR(255),
+            phone VARCHAR(50),
+            address TEXT,
+            contact_name VARCHAR(200),
+            notes TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (code)
+        )
+    """))
+
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."supplier_resources" (
+            id UUID PRIMARY KEY,
+            supplier_id UUID NOT NULL REFERENCES "{schema_name}".suppliers(id) ON DELETE CASCADE,
+            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id) ON DELETE CASCADE,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (supplier_id, resource_id)
+        )
+    """))
+
     db.flush()
 
     db.flush()

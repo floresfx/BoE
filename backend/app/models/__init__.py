@@ -9,6 +9,8 @@ from app.models.operational import (
     ResourceAttribute,
     ResourceTax,
     StockLot,
+    Supplier,
+    SupplierResource,
     Warehouse,
 )
 from app.models.permission import Permission, RolePermission
@@ -118,4 +120,6 @@ __all__ = [
     "MOVEMENT_TYPES",
     "StockLot",
     "Warehouse",
+    "Supplier",
+    "SupplierResource",
 ]
