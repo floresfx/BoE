@@ -12,6 +12,7 @@ import { Admin } from './pages/Admin'
 import { Inventory } from './pages/inventory/Inventory'
 import { SuppliersList } from './pages/suppliers/SuppliersList'
 import { BundlesList } from './pages/bundles/BundlesList'
+import { PurchaseRequestsList } from './pages/purchase_requests/PurchaseRequestsList'
 
 export function App() {
   return (
@@ -47,6 +48,7 @@ export function App() {
         <Route path="admin" element={<Admin />} />
         <Route path="suppliers" element={<SuppliersList />} />
         <Route path="bundles" element={<BundlesList />} />
+        <Route path="purchase-requests" element={<PurchaseRequestsList />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

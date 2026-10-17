@@ -1,6 +1,11 @@
 """Modelos operativos (por tenant)."""
 from app.models.operational.bundle import Bundle, BundleComponent
 from app.models.operational.movement import Movement, MOVEMENT_TYPES
+from app.models.operational.purchase_request import (
+    PurchaseRequest,
+    PurchaseRequestLine,
+    PURCHASE_REQUEST_STATUSES,
+)
 from app.models.operational.resource import Resource, RESOURCE_TYPES
 from app.models.operational.resource_attribute import ResourceAttribute
 from app.models.operational.resource_tax import ResourceTax
@@ -22,4 +27,7 @@ __all__ = [
     "SupplierResource",
     "Bundle",
     "BundleComponent",
+    "PurchaseRequest",
+    "PurchaseRequestLine",
+    "PURCHASE_REQUEST_STATUSES",
 ]

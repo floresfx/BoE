@@ -6,6 +6,9 @@ from app.models.operational import (
     BundleComponent,
     Movement,
     MOVEMENT_TYPES,
+    PurchaseRequest,
+    PurchaseRequestLine,
+    PURCHASE_REQUEST_STATUSES,
     Resource,
     RESOURCE_TYPES,
     ResourceAttribute,
@@ -126,4 +129,7 @@ __all__ = [
     "SupplierResource",
     "Bundle",
     "BundleComponent",
+    "PurchaseRequest",
+    "PurchaseRequestLine",
+    "PURCHASE_REQUEST_STATUSES",
 ]

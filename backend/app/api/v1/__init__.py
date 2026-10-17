@@ -2,14 +2,15 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     access_logs,
-    auth,
     admin,
+    auth,
+    bundles,
     catalogs,
     movements,
     permissions,
     plans,
     profiles,
-    subscription, 
+    purchase_requests,
     register,
     resources,
     resource_attributes,
@@ -17,12 +18,12 @@ from app.api.v1 import (
     roles,
     secure_devices,
     stock,
+    subscription,
+    suppliers,
     tenants,
     users,
     verticals,
     warehouses,
-    suppliers,
-    bundles,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -50,3 +51,4 @@ api_router.include_router(movements.router)
 api_router.include_router(stock.router)
 api_router.include_router(suppliers.router)
 api_router.include_router(bundles.router)
+api_router.include_router(purchase_requests.router)

@@ -178,6 +178,36 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
         )
     """))
 
+    # Purchase Requests
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."purchase_requests" (
+            id UUID PRIMARY KEY,
+            code VARCHAR(50) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft',
+            needed_by TIMESTAMPTZ,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (code)
+        )
+    """))
+
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."purchase_request_lines" (
+            id UUID PRIMARY KEY,
+            request_id UUID NOT NULL REFERENCES "{schema_name}".purchase_requests(id) ON DELETE CASCADE,
+            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id),
+            quantity NUMERIC(14, 4) NOT NULL,
+            supplier_id UUID REFERENCES "{schema_name}".suppliers(id) ON DELETE SET NULL,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (request_id, resource_id)
+        )
+    """))
+
+    db.flush()
+
     db.flush()
 
     db.flush()
