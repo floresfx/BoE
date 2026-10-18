@@ -17,9 +17,7 @@ import { ConfirmDialog } from '../resources/ConfirmDialog'
 import { PurchaseRequestDetailModal } from './PurchaseRequestDetailModal'
 import { PurchaseRequestForm } from './PurchaseRequestForm'
 import { PurchaseRequestFromBundleModal } from './PurchaseRequestFromBundleModal'
-
-const statusLabel = (s: PurchaseRequestStatus) =>
-  PURCHASE_REQUEST_STATUSES.find((x) => x.value === s)?.label ?? s
+import { Can } from '../../components/auth/Can'
 
 const statusBadge = (s: PurchaseRequestStatus) => {
   const cfg = PURCHASE_REQUEST_STATUSES.find((x) => x.value === s)
@@ -29,7 +27,7 @@ const statusBadge = (s: PurchaseRequestStatus) => {
     | 'green'
     | 'red'
     | 'blue'
-  return <Badge variant={variant}>{statusLabel(s)}</Badge>
+  return <Badge variant={variant}>{cfg?.label ?? s}</Badge>
 }
 
 export function PurchaseRequestsList() {
@@ -37,7 +35,7 @@ export function PurchaseRequestsList() {
   const [statusFilter, setStatusFilter] = useState<PurchaseRequestStatus | ''>('')
   const [formOpen, setFormOpen] = useState(false)
   const [fromBundleOpen, setFromBundleOpen] = useState(false)
-  const [viewing, setViewing] = useState<PurchaseRequest | null>(null)
+  const [viewingId, setViewingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<PurchaseRequest | null>(null)
 
   const { data, isLoading, error } = usePurchaseRequests({
@@ -85,10 +83,14 @@ export function PurchaseRequestsList() {
           </p>
         </div>
         <div className="space-x-2">
+         <Can module="purchase_request" action="crear">
           <Button variant="secondary" onClick={() => setFromBundleOpen(true)}>
             + Desde paquete
           </Button>
-          <Button onClick={() => setFormOpen(true)}>+ Nueva solicitud</Button>
+        </Can>
+          <Can module="purchase_request" action="crear">
+            <Button onClick={() => setFormOpen(true)}>+ Nueva solicitud</Button>
+          </Can>
         </div>
       </div>
 
@@ -165,23 +167,28 @@ export function PurchaseRequestsList() {
                     {new Date(r.created_at).toLocaleDateString('es-ES')}
                   </td>
                   <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                  <Can module="purchase_request" action="ver">
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => setViewing(r)}
+                      onClick={() => setViewingId(r.id)}
                     >
                       Ver
                     </Button>
-                    {r.status === 'draft' && (
+                  </Can>
+                  {r.status === 'draft' && (
+                    <Can module="purchase_request" action="editar">
                       <Button
                         size="sm"
                         onClick={() => handleStatusChange(r, 'pending')}
                       >
                         Enviar
                       </Button>
-                    )}
-                    {r.status === 'pending' && (
-                      <>
+                    </Can>
+                  )}
+                  {r.status === 'pending' && (
+                    <>
+                      <Can module="purchase_request" action="aprobar">
                         <Button
                           size="sm"
                           onClick={() => handleStatusChange(r, 'approved')}
@@ -191,21 +198,25 @@ export function PurchaseRequestsList() {
                         <Button
                           size="sm"
                           variant="danger"
-                          onClick={() => handleStatusChange(r, 'rejected')}
+                          onClick={() => handleStatusChange(r, 'cancelled')}
                         >
                           Rechazar
                         </Button>
-                      </>
-                    )}
-                    {r.status === 'approved' && (
+                      </Can>
+                    </>
+                  )}
+                  {r.status === 'approved' && (
+                    <Can module="purchase_request" action="aprobar">
                       <Button
                         size="sm"
                         onClick={() => handleStatusChange(r, 'completed')}
                       >
                         Completar
                       </Button>
-                    )}
-                    {r.status === 'draft' && (
+                    </Can>
+                  )}
+                  {r.status === 'draft' && (
+                    <Can module="purchase_request" action="eliminar">
                       <Button
                         size="sm"
                         variant="danger"
@@ -213,8 +224,9 @@ export function PurchaseRequestsList() {
                       >
                         Borrar
                       </Button>
-                    )}
-                  </td>
+                    </Can>
+                  )}
+                </td>
                 </tr>
               ))}
             </tbody>
@@ -237,9 +249,9 @@ export function PurchaseRequestsList() {
       />
 
       <PurchaseRequestDetailModal
-        open={Boolean(viewing)}
-        request={viewing}
-        onClose={() => setViewing(null)}
+        open={Boolean(viewingId)}
+        requestId={viewingId}
+        onClose={() => setViewingId(null)}
       />
 
       <ConfirmDialog

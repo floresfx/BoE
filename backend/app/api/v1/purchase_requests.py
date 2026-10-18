@@ -16,6 +16,7 @@ from app.models import (
     PURCHASE_REQUEST_STATUSES,
     Resource,
     Supplier,
+    SupplierQuote,
     Tenant,
 )
 from app.schemas.purchase_request import (
@@ -27,6 +28,25 @@ from app.schemas.purchase_request import (
     PurchaseRequestStatusUpdate,
     PurchaseRequestUpdate,
 )
+from app.schemas.purchase_request_receive import (
+    ReceiveRequest,
+    ReceiveResponse,
+)
+from app.schemas.supplier_quote import (
+    SupplierQuoteCreate,
+    SupplierQuoteListResponse,
+    SupplierQuoteResponse,
+    SupplierQuoteUpdate,
+)
+from app.services.supplier_quote_service import (
+    create_quote,
+    delete_quote,
+    list_quotes,
+    select_quote,
+    send_request_to_suppliers,
+    update_quote,
+)
+
 from app.services.bundle_service import explode_bundle
 
 router = APIRouter(prefix="/purchase-requests", tags=["purchase-requests"])
@@ -85,6 +105,7 @@ def _build_line_response(
         resource_id=line.resource_id,
         resource_name=resource.name if resource else "",
         quantity=line.quantity,
+        quantity_received=line.quantity_received or Decimal("0"),
         supplier_id=line.supplier_id,
         supplier_name=supplier.name if supplier else None,
         notes=line.notes,
@@ -103,6 +124,28 @@ def _build_response(db: Session, req: PurchaseRequest) -> PurchaseRequestRespons
         lines=[_build_line_response(db, l) for l in req.lines],
     )
 
+def _build_quote_response(
+    db: Session, quote: SupplierQuote
+) -> SupplierQuoteResponse:
+    supplier = (
+        db.query(Supplier).filter(Supplier.id == quote.supplier_id).first()
+    )
+    return SupplierQuoteResponse(
+        id=quote.id,
+        request_id=quote.request_id,
+        line_id=quote.line_id,
+        supplier_id=quote.supplier_id,
+        supplier_name=supplier.name if supplier else "",
+        unit_price=quote.unit_price,
+        currency_code=quote.currency_code,
+        lead_time_days=quote.lead_time_days,
+        valid_until=quote.valid_until,
+        notes=quote.notes,
+        status=quote.status,
+        is_selected=quote.is_selected,
+        created_at=quote.created_at,
+        updated_at=quote.updated_at,
+    )
 
 def _generate_code(db: Session) -> str:
     """Genera un código único tipo REQ-2026-001."""
@@ -430,3 +473,176 @@ def remove_line(
         raise HTTPException(404, "Línea no encontrada")
     db.delete(line)
     db.flush()
+
+# ---------------------------------------------------------------------------
+# Recepción de mercancía
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/{request_id}/receive",
+    response_model=ReceiveResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("purchase_request", "aprobar"))],
+)
+def receive_request(
+    request_id: UUID,
+    data: ReceiveRequest,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Recibe mercancía de una solicitud aprobada.
+
+    - Permite recepciones parciales.
+    - Crea movimientos `in` de inventario.
+    - Cambia el estado de la solicitud a `completed` o `partially_received`.
+    """
+    from app.services.purchase_receive_service import receive_purchase_request
+
+    return receive_purchase_request(
+        db=db,
+        tenant=current_tenant,
+        request_id=request_id,
+        data=data,
+    )
+
+# ---------------------------------------------------------------------------
+# Envío a proveedores y cotizaciones (Bloque 6.2.a)
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/{request_id}/send",
+    response_model=PurchaseRequestResponse,
+    dependencies=[Depends(require_permission("purchase_request", "aprobar"))],
+)
+def send_to_suppliers(
+    request_id: UUID,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Marca la solicitud como enviada a proveedores (draft → pending)."""
+    req = send_request_to_suppliers(
+        db=db,
+        tenant=current_tenant,
+        request_id=request_id,
+    )
+    return _build_response(db, req)
+
+
+@router.post(
+    "/{request_id}/quotes",
+    response_model=SupplierQuoteResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("supplier_quote", "crear"))],
+)
+def create_supplier_quote(
+    request_id: UUID,
+    data: SupplierQuoteCreate,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Crea una cotización de un proveedor para una línea."""
+    quote = create_quote(
+        db=db,
+        tenant=current_tenant,
+        request_id=request_id,
+        line_id=data.line_id,
+        supplier_id=data.supplier_id,
+        unit_price=data.unit_price,
+        currency_code=data.currency_code,
+        lead_time_days=data.lead_time_days,
+        valid_until=data.valid_until,
+        notes=data.notes,
+    )
+    return _build_quote_response(db, quote)
+
+
+@router.get(
+    "/{request_id}/quotes",
+    response_model=SupplierQuoteListResponse,
+)
+def get_quotes(
+    request_id: UUID,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Lista las cotizaciones de una solicitud."""
+    quotes = list_quotes(
+        db=db,
+        tenant=current_tenant,
+        request_id=request_id,
+    )
+    return SupplierQuoteListResponse(
+        items=[_build_quote_response(db, q) for q in quotes],
+        total=len(quotes),
+    )
+
+@router.put(
+    "/{request_id}/quotes/{quote_id}",
+    response_model=SupplierQuoteResponse,
+    dependencies=[Depends(require_permission("purchase_request", "editar"))],
+)
+def update_supplier_quote(
+    request_id: UUID,
+    quote_id: UUID,
+    data: SupplierQuoteUpdate,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Actualiza una cotización (solo si está pending)."""
+    quote = update_quote(
+        db=db,
+        tenant=current_tenant,
+        request_id=request_id,
+        quote_id=quote_id,
+        unit_price=data.unit_price,
+        currency_code=data.currency_code,
+        lead_time_days=data.lead_time_days,
+        valid_until=data.valid_until,
+        notes=data.notes,
+    )
+    return _build_quote_response(db, quote)
+
+
+@router.delete(
+    "/{request_id}/quotes/{quote_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("purchase_request", "editar"))],
+)
+def delete_supplier_quote(
+    request_id: UUID,
+    quote_id: UUID,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Elimina una cotización (solo si está pending)."""
+    delete_quote(
+        db=db,
+        tenant=current_tenant,
+        request_id=request_id,
+        quote_id=quote_id,
+    )
+
+
+@router.post(
+    "/{request_id}/quotes/{quote_id}/select",
+    response_model=SupplierQuoteResponse,
+    dependencies=[Depends(require_permission("purchase_request", "aprobar"))],
+)
+def select_supplier_quote(
+    request_id: UUID,
+    quote_id: UUID,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Selecciona una cotización como la elegida.
+
+    - La elegida pasa a `accepted`.
+    - Las demás de la misma línea pasan a `rejected`.
+    """
+    quote = select_quote(
+        db=db,
+        tenant=current_tenant,
+        request_id=request_id,
+        quote_id=quote_id,
+    )
+    return _build_quote_response(db, quote)

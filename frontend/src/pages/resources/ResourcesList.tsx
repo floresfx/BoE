@@ -4,6 +4,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
+import { Can } from '../../components/auth/Can'
 import {
   useCategories,
   useUnits,
@@ -37,7 +38,6 @@ export function ResourcesList() {
   const [managingAttrs, setManagingAttrs] = useState<Resource | null>(null)
   const [managingTaxes, setManagingTaxes] = useState<Resource | null>(null)
 
-  // Datos maestros para mostrar nombres
   const { data: units = [] } = useUnits()
   const { data: categories = [] } = useCategories()
 
@@ -127,7 +127,9 @@ export function ResourcesList() {
             Materias primas, servicios, recursos humanos y físicos.
           </p>
         </div>
-        <Button onClick={handleNew}>+ Nuevo recurso</Button>
+        <Can module="resource" action="crear">
+          <Button onClick={handleNew}>+ Nuevo recurso</Button>
+        </Can>
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -257,21 +259,25 @@ export function ResourcesList() {
                       >
                         Impuestos ({r.taxes.length})
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleEdit(r)}
-                      >
-                        Editar
-                      </Button>
-                      {r.is_active && (
+                      <Can module="resource" action="editar">
                         <Button
                           size="sm"
-                          variant="danger"
-                          onClick={() => setDeleting(r)}
+                          variant="secondary"
+                          onClick={() => handleEdit(r)}
                         >
-                          Desactivar
+                          Editar
                         </Button>
+                      </Can>
+                      {r.is_active && (
+                        <Can module="resource" action="eliminar">
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setDeleting(r)}
+                          >
+                            Desactivar
+                          </Button>
+                        </Can>
                       )}
                     </td>
                   </tr>

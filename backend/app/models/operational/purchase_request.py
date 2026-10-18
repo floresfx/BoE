@@ -26,8 +26,10 @@ from app.models.base_tenant import TenantBase
 PURCHASE_REQUEST_STATUSES = (
     "draft",
     "pending",
+    "quoted",
     "approved",
-    "rejected",
+    "ordered",
+    "partially_received",
     "completed",
     "cancelled",
 )
@@ -80,6 +82,9 @@ class PurchaseRequestLine(TenantBase, UUIDMixin, TimestampMixin):
     )
     quantity: Mapped[Decimal] = mapped_column(
         Numeric(14, 4), nullable=False
+    )
+    quantity_received: Mapped[Decimal] = mapped_column(
+        Numeric(14, 4), nullable=False, default=0, server_default="0"
     )
     supplier_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("suppliers.id", ondelete="SET NULL"), nullable=True

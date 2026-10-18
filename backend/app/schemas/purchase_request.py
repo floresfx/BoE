@@ -57,6 +57,7 @@ class PurchaseRequestLineResponse(BaseModel):
     resource_id: UUID
     resource_name: str
     quantity: Decimal
+    quantity_received: Decimal = Decimal("0")
     supplier_id: UUID | None
     supplier_name: str | None
     notes: str | None

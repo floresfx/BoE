@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { Can } from '../../components/auth/Can'
 import {
   useDeleteSupplier,
   useSuppliers,
@@ -57,7 +58,9 @@ export function SuppliersList() {
             Empresas o personas que suministran recursos.
           </p>
         </div>
-        <Button onClick={handleNew}>+ Nuevo proveedor</Button>
+        <Can module="supplier" action="crear">
+          <Button onClick={handleNew}>+ Nuevo proveedor</Button>
+        </Can>
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -92,12 +95,24 @@ export function SuppliersList() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-700">Código</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-700">Nombre</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-700">Contacto</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-700">Recursos</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-700">Estado</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-700">Acciones</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-700">
+                  Código
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-slate-700">
+                  Nombre
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-slate-700">
+                  Contacto
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-slate-700">
+                  Recursos
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-slate-700">
+                  Estado
+                </th>
+                <th className="text-right px-4 py-3 font-medium text-slate-700">
+                  Acciones
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -130,21 +145,25 @@ export function SuppliersList() {
                     >
                       Recursos ({s.resources.length})
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleEdit(s)}
-                    >
-                      Editar
-                    </Button>
-                    {s.is_active && (
+                    <Can module="supplier" action="editar">
                       <Button
                         size="sm"
-                        variant="danger"
-                        onClick={() => setDeleting(s)}
+                        variant="secondary"
+                        onClick={() => handleEdit(s)}
                       >
-                        Desactivar
+                        Editar
                       </Button>
+                    </Can>
+                    {s.is_active && (
+                      <Can module="supplier" action="eliminar">
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => setDeleting(s)}
+                        >
+                          Desactivar
+                        </Button>
+                      </Can>
                     )}
                   </td>
                 </tr>

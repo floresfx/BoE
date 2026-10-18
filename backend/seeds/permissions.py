@@ -65,6 +65,7 @@ PERMISSIONS = [
     {"module": "purchase_request", "action": "ver", "description": "Ver solicitudes de compra"},
     {"module": "purchase_request", "action": "crear", "description": "Crear solicitudes de compra"},
     {"module": "purchase_request", "action": "aprobar", "description": "Aprobar solicitudes de compra"},
+    {"module": "purchase_request", "action": "recibir", "description": "Recibir mercancía"},
 
     # Tenant
     {"module": "tenant", "action": "configurar", "description": "Configurar tenant"},
@@ -81,6 +82,33 @@ PERMISSIONS = [
 
     # Bundle
     {"module": "bundle", "action": "ver", "description": "Ver paquetes"},
+
+    {"module": "supplier_quote", "action": "ver", "description": "Ver cotizaciones"},
+    {"module": "supplier_quote", "action": "crear", "description": "Crear cotizaciones"},
+    {"module": "supplier_quote", "action": "editar", "description": "Editar cotizaciones"},
+    {"module": "supplier_quote", "action": "eliminar", "description": "Eliminar cotizaciones"},
+
+    # Purchase Request
+    {"module": "purchase_request", "action": "ver", "description": "Ver solicitudes"},
+    {"module": "purchase_request", "action": "crear", "description": "Crear solicitudes"},
+    {"module": "purchase_request", "action": "editar", "description": "Editar solicitudes"},
+    {"module": "purchase_request", "action": "eliminar", "description": "Eliminar solicitudes"},
+    {"module": "purchase_request", "action": "aprobar", "description": "Aprobar solicitudes"},
+    {"module": "purchase_request", "action": "recibir", "description": "Recibir mercancía"},
+
+    # Supplier Quote
+    {"module": "supplier_quote", "action": "ver", "description": "Ver cotizaciones"},
+    {"module": "supplier_quote", "action": "crear", "description": "Crear cotizaciones"},
+    {"module": "supplier_quote", "action": "editar", "description": "Editar cotizaciones"},
+    {"module": "supplier_quote", "action": "eliminar", "description": "Eliminar cotizaciones"},
+    {"module": "supplier_quote", "action": "seleccionar", "description": "Seleccionar cotización"},
+
+    # Supplier (si existe)
+    {"module": "supplier", "action": "ver", "description": "Ver proveedores"},
+    {"module": "supplier", "action": "crear", "description": "Crear proveedores"},
+    {"module": "supplier", "action": "editar", "description": "Editar proveedores"},
+    {"module": "supplier", "action": "eliminar", "description": "Eliminar proveedores"},
+    
 
     
 ]

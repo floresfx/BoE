@@ -1,7 +1,6 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/layout/Layout'
-import { Dashboard } from './pages/Dashboard'
 import { Login } from './pages/Login'
 import { NotFound } from './pages/NotFound'
 import { Register } from './pages/Register'
@@ -13,8 +12,11 @@ import { Inventory } from './pages/inventory/Inventory'
 import { SuppliersList } from './pages/suppliers/SuppliersList'
 import { BundlesList } from './pages/bundles/BundlesList'
 import { BundleCost } from './pages/bundles/BundleCost'
-import { PurchaseRequestsList } from './pages/purchase_requests/PurchaseRequestsList'
 import { AvailabilityChecker } from './pages/availability/AvailabilityChecker'
+import { PurchaseRequestsList } from './pages/purchase_requests/PurchaseRequestsList'
+import { PurchaseRequestDetail } from './pages/purchase_requests/PurchaseRequestDetail'
+import { NewPurchaseRequest } from './pages/purchase_requests/NewPurchaseRequest'
+
 
 export function App() {
   return (
@@ -42,8 +44,6 @@ export function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
         <Route path="resources" element={<ResourcesList />} />
         <Route path="catalogs" element={<Catalogs />} />
         <Route path="inventory" element={<Inventory />} />
@@ -51,8 +51,10 @@ export function App() {
         <Route path="suppliers" element={<SuppliersList />} />
         <Route path="bundles" element={<BundlesList />} />
         <Route path="bundles/:bundleId/cost" element={<BundleCost />} />
-        <Route path="purchase-requests" element={<PurchaseRequestsList />} />
         <Route path="availability" element={<AvailabilityChecker />} />
+        <Route path="purchase-requests" element={<PurchaseRequestsList />} />
+        <Route path="purchase-requests/new" element={<NewPurchaseRequest />} />
+        <Route path="purchase-requests/:requestId" element={<PurchaseRequestDetail />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

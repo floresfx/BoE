@@ -6,6 +6,12 @@ from app.models.operational.purchase_request import (
     PurchaseRequestLine,
     PURCHASE_REQUEST_STATUSES,
 )
+from app.models.operational.purchase_order import (
+    PurchaseOrder,
+    PurchaseOrderLine,
+    PURCHASE_ORDER_STATUSES,
+)
+from app.models.operational.supplier_quote import SupplierQuote
 from app.models.operational.resource import Resource, RESOURCE_TYPES
 from app.models.operational.resource_attribute import ResourceAttribute
 from app.models.operational.resource_tax import ResourceTax
@@ -30,4 +36,8 @@ __all__ = [
     "PurchaseRequest",
     "PurchaseRequestLine",
     "PURCHASE_REQUEST_STATUSES",
+    "SupplierQuote",
+    "PurchaseOrder",
+    "PurchaseOrderLine",
+    "PURCHASE_ORDER_STATUSES",
 ]

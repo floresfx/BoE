@@ -1,14 +1,32 @@
 import { useEffect, type ReactNode } from 'react'
 
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
+
 interface Props {
   open: boolean
   onClose: () => void
   title: string
   children: ReactNode
   footer?: ReactNode
+  size?: ModalSize
 }
 
-export function Modal({ open, onClose, title, children, footer }: Props) {
+const SIZE_CLASSES: Record<ModalSize, string> = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-4xl',
+  full: 'max-w-[95vw]',
+}
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  size = 'lg',
+}: Props) {
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
@@ -26,7 +44,7 @@ export function Modal({ open, onClose, title, children, footer }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col"
+        className={`bg-white rounded-lg shadow-xl w-full ${SIZE_CLASSES[size]} max-h-[90vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-slate-200">

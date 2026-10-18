@@ -17,6 +17,10 @@ from app.models.operational import (
     Supplier,
     SupplierResource,
     Warehouse,
+    PurchaseOrder,
+    PurchaseOrderLine,
+    PURCHASE_ORDER_STATUSES,
+    SupplierQuote,
 )
 from app.models.permission import Permission, RolePermission
 from app.models.plan import Plan
@@ -132,4 +136,8 @@ __all__ = [
     "PurchaseRequest",
     "PurchaseRequestLine",
     "PURCHASE_REQUEST_STATUSES",
+    "SupplierQuote",
+    "PurchaseOrder",
+    "PurchaseOrderLine",
+    "PURCHASE_ORDER_STATUSES",
 ]

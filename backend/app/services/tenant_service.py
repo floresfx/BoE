@@ -205,11 +205,63 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
             request_id UUID NOT NULL REFERENCES "{schema_name}".purchase_requests(id) ON DELETE CASCADE,
             resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id),
             quantity NUMERIC(14, 4) NOT NULL,
+            quantity_received NUMERIC(14, 4) NOT NULL DEFAULT 0,
             supplier_id UUID REFERENCES "{schema_name}".suppliers(id) ON DELETE SET NULL,
             notes TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             UNIQUE (request_id, resource_id)
+        )
+    """))
+    
+    # Supplier Quotes
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."supplier_quotes" (
+            id UUID PRIMARY KEY,
+            request_id UUID NOT NULL REFERENCES "{schema_name}".purchase_requests(id) ON DELETE CASCADE,
+            line_id UUID NOT NULL REFERENCES "{schema_name}".purchase_request_lines(id) ON DELETE CASCADE,
+            supplier_id UUID NOT NULL REFERENCES "{schema_name}".suppliers(id) ON DELETE CASCADE,
+            unit_price NUMERIC(12, 4) NOT NULL,
+            currency_code VARCHAR(10) NOT NULL DEFAULT 'USD',
+            lead_time_days INTEGER NOT NULL DEFAULT 0,
+            valid_until TIMESTAMPTZ,
+            notes TEXT,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            is_selected BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+
+    # Purchase Orders
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."purchase_orders" (
+            id UUID PRIMARY KEY,
+            code VARCHAR(50) NOT NULL,
+            request_id UUID REFERENCES "{schema_name}".purchase_requests(id) ON DELETE SET NULL,
+            supplier_id UUID NOT NULL REFERENCES "{schema_name}".suppliers(id) ON DELETE RESTRICT,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft',
+            total NUMERIC(14, 4) NOT NULL DEFAULT 0,
+            currency_code VARCHAR(10) NOT NULL DEFAULT 'USD',
+            expected_delivery TIMESTAMPTZ,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (code)
+        )
+    """))
+
+    # Purchase Order Lines
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."purchase_order_lines" (
+            id UUID PRIMARY KEY,
+            order_id UUID NOT NULL REFERENCES "{schema_name}".purchase_orders(id) ON DELETE CASCADE,
+            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id) ON DELETE RESTRICT,
+            quantity NUMERIC(14, 4) NOT NULL,
+            unit_price NUMERIC(12, 4) NOT NULL,
+            subtotal NUMERIC(14, 4) NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
     """))
 
