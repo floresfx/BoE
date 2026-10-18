@@ -15,6 +15,8 @@ const navItems = [
   { to: '/suppliers', label: 'Proveedores', icon: '🏭', disabled: false },
   { to: '/bundles', label: 'Paquetes', icon: '📦', disabled: false },
   { to: '/purchase-requests', label: 'Solicitudes', icon: '📋', disabled: false},
+  { to: '/availability', label: 'Disponibilidad', icon: '✅', disabled: false},
+
 ]
 
 export function Sidebar() {

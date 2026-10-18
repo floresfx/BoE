@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_tenant
+from app.api.permissions import require_permission
 from app.core.database import get_db
 from app.models import Bundle, BundleComponent, Resource, Tenant
 from app.schemas.bundle import (
@@ -18,6 +19,9 @@ from app.schemas.bundle import (
     BundleUpdate,
 )
 from app.services.bundle_service import explode_bundle
+from app.schemas.bundle_cost import BundleCostResponse
+from app.services import bundle_cost_service
+
 
 router = APIRouter(prefix="/bundles", tags=["bundles"])
 
@@ -103,7 +107,12 @@ def get_bundle(
     return _build_response(db, b)
 
 
-@router.post("", response_model=BundleResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=BundleResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("bundle", "crear"))],
+)
 def create_bundle(
     data: BundleCreate,
     current_tenant: Tenant = Depends(get_current_tenant),
@@ -137,7 +146,11 @@ def create_bundle(
     return _build_response(db, bundle)
 
 
-@router.put("/{bundle_id}", response_model=BundleResponse)
+@router.put(
+    "/{bundle_id}",
+    response_model=BundleResponse,
+    dependencies=[Depends(require_permission("bundle", "editar"))],
+)
 def update_bundle(
     bundle_id: UUID,
     data: BundleUpdate,
@@ -153,7 +166,11 @@ def update_bundle(
     return _build_response(db, bundle)
 
 
-@router.delete("/{bundle_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{bundle_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("bundle", "eliminar"))],
+)
 def delete_bundle(
     bundle_id: UUID,
     current_tenant: Tenant = Depends(get_current_tenant),
@@ -306,3 +323,24 @@ def explode(
     """
     result = explode_bundle(db, bundle_id, multiplier)
     return BundleExplodeResponse(**result)
+# ---------------------------------------------------------------------------
+# Costos del bundle
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{bundle_id}/cost",
+    response_model=BundleCostResponse,
+    dependencies=[Depends(require_permission("bundle", "ver"))],
+)
+def get_bundle_cost(
+    bundle_id: UUID,
+    multiplier: Decimal = Query(Decimal("1.0"), gt=0),
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Calcula el costo total de un bundle."""
+    return bundle_cost_service.calculate_bundle_cost(
+        db=db,
+        bundle_id=bundle_id,
+        multiplier=multiplier,
+    )

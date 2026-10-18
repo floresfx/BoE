@@ -55,6 +55,17 @@ PERMISSIONS = [
     {"module": "opportunity", "action": "ejecutar", "description": "Ejecutar oportunidades"},
     {"module": "opportunity", "action": "exportar", "description": "Exportar oportunidades"},
 
+    # Resource
+    {"module": "resource", "action": "ver", "description": "Ver recursos"},
+    {"module": "resource", "action": "crear", "description": "Crear recursos"},
+    {"module": "resource", "action": "editar", "description": "Editar recursos"},
+    {"module": "resource", "action": "eliminar", "description": "Eliminar recursos"},
+
+    # Purchase Request
+    {"module": "purchase_request", "action": "ver", "description": "Ver solicitudes de compra"},
+    {"module": "purchase_request", "action": "crear", "description": "Crear solicitudes de compra"},
+    {"module": "purchase_request", "action": "aprobar", "description": "Aprobar solicitudes de compra"},
+
     # Tenant
     {"module": "tenant", "action": "configurar", "description": "Configurar tenant"},
     {"module": "tenant", "action": "ver_usuarios", "description": "Ver usuarios"},
@@ -64,6 +75,14 @@ PERMISSIONS = [
     {"module": "tenant", "action": "ver_logs", "description": "Ver logs"},
     {"module": "tenant", "action": "exportar_todo", "description": "Exportar todos los datos"},
     {"module": "tenant", "action": "eliminar", "description": "Eliminar tenant"},
+
+    # Availability
+    {"module": "availability", "action": "ver", "description": "Ver disponibilidad"},
+
+    # Bundle
+    {"module": "bundle", "action": "ver", "description": "Ver paquetes"},
+
+    
 ]
 
 

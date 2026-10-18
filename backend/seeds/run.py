@@ -26,6 +26,7 @@ from seeds.geo import (
     seed_taxes,
 )
 from seeds.permissions import seed_permissions
+from scripts.sync_role_permissions import sync_role_permissions
 from seeds.plans import seed_plans
 from seeds.profiles import seed_profiles
 from seeds.roles import seed_roles
@@ -154,6 +155,17 @@ def run_seeds() -> None:
 
         va = seed_verticals_attributes(db)
         print(f"   Atributos por vertical: {va} creados")
+
+        # 6. Sincronizar permisos de roles (NUEVO)
+        print("\n🔄 Sincronizando permisos de roles...")
+        from scripts.sync_role_permissions import sync_role_permissions
+        roles_result = sync_role_permissions(db)
+        db.commit()
+        for role_name, total in roles_result.items():
+            if total == -1:
+                print(f"  ⚠️  {role_name}: no existe")
+            else:
+                print(f"  ✅ {role_name}: {total} permisos")
 
         # =====================================================================
         # Admin (al final)

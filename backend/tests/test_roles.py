@@ -11,7 +11,6 @@ def test_create_role(client: TestClient, tenant: Tenant):
     response = client.post(
         "/api/v1/roles",
         json={
-            "tenant_id": str(tenant.id),
             "name": unique_name,
             "description": "Administrador",
             "permission_ids": [],
@@ -26,11 +25,13 @@ def test_create_role_con_permisos(
     client: TestClient, tenant: Tenant, permission: Permission
 ):
     """Test: crear rol con permisos."""
+    from uuid import uuid4
+
+    unique_name = f"Editor_{uuid4().hex[:6]}"
     response = client.post(
         "/api/v1/roles",
         json={
-            "tenant_id": str(tenant.id),
-            "name": "Editor",
+            "name": unique_name,
             "description": "Editor",
             "permission_ids": [str(permission.id)],
         },
@@ -47,16 +48,19 @@ def test_list_roles(client: TestClient, tenant: Tenant):
 
 def test_update_role(client: TestClient, tenant: Tenant):
     """Test: actualizar rol."""
+    from uuid import uuid4
+
     # Crear rol primero
+    unique_name = f"Lector_{uuid4().hex[:6]}"
     create_response = client.post(
         "/api/v1/roles",
         json={
-            "tenant_id": str(tenant.id),
-            "name": "Lector",
+            "name": unique_name,
             "description": "Lector",
             "permission_ids": [],
         },
     )
+    assert create_response.status_code == 201, create_response.json()
     role_id = create_response.json()["id"]
 
     # Actualizar

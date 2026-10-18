@@ -30,16 +30,27 @@ from app.models import (
     PlanFeature,
     PlanLimit,
     Profile,
+    Resource,
     Role,
+    RolePermission,
+    StockLot,
     Subcategory,
+    Supplier,
     Tax,
     Tenant,
     Timezone,
     Unit,
     UnitCategory,
     User,
+    UserRole,
     Vertical,
+    Warehouse,
 )
+
+import os
+
+# Desactivar migraciones de Alembic en tests
+os.environ["SKIP_TENANT_MIGRATIONS"] = "1"
 
 # ---------------------------------------------------------------------------
 # Engine de test (una sola vez por sesión)
@@ -59,11 +70,7 @@ TestingSessionLocal = sessionmaker(
 
 @pytest.fixture(scope="session", autouse=True)
 def _setup_database():
-    """Crea las tablas globales (public) al inicio de la sesión.
-
-    NO las dropea al final: preferimos que boe_test quede con el esquema
-    estándar entre ejecuciones. Si quieres limpiar, hazlo manualmente.
-    """
+    """Crea las tablas globales (public) al inicio de la sesión."""
     Base.metadata.create_all(bind=engine)
     yield
 
@@ -114,15 +121,7 @@ def client(db: Session) -> Generator[TestClient, None, None]:
 
 @pytest.fixture
 def tenant_factory(db: Session):
-    """Crea tenants de prueba con schema real.
-
-    Devuelve una función `create(name=...)` que:
-    - Genera tax_id y schema_name únicos.
-    - Crea el schema en Postgres.
-    - Registra el tenant en public.tenants.
-
-    Al final del test, dropea todos los schemas creados.
-    """
+    """Crea tenants de prueba con schema real."""
     created_schemas: list[str] = []
 
     def _create(
@@ -157,7 +156,7 @@ def tenant_factory(db: Session):
 
 @pytest.fixture
 def user_factory(db: Session):
-    """Crea users de prueba en un tenant."""
+    """Crea users de prueba en un tenant con rol Admin y TODOS los permisos."""
 
     def _create(
         tenant: Tenant,
@@ -179,6 +178,26 @@ def user_factory(db: Session):
         )
         db.add(user)
         db.flush()
+
+        # --- Crear un rol único por usuario ---
+        role = Role(
+            name=f"TestRole_{uid[:8]}",
+            description="Test role with all permissions",
+            is_system=False,
+        )
+        db.add(role)
+        db.flush()
+
+        # --- Asignar TODOS los permisos existentes al rol ---
+        all_perms = db.query(Permission).all()
+        for perm in all_perms:
+            db.add(RolePermission(role_id=role.id, permission_id=perm.id))
+        db.flush()
+
+        # --- Asignar el rol al user ---
+        db.add(UserRole(user_id=user.id, role_id=role.id))
+        db.flush()
+
         return user, password
 
     return _create
@@ -278,6 +297,7 @@ def auth_headers(client: TestClient, user: User) -> dict:
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
+
 @pytest.fixture
 def currency(db: Session) -> Currency:
     """Crea una moneda de prueba."""
@@ -293,15 +313,14 @@ def currency(db: Session) -> Currency:
     db.flush()
     return c
 
-    # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # Fixtures de datos maestros (Fase 2)
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def unit(db: Session) -> "Unit":
+def unit(db: Session) -> Unit:
     """Crea una unidad de prueba."""
-    from app.models import Unit, UnitCategory
-    # Crear categoría si no existe
     cat = db.query(UnitCategory).filter(UnitCategory.code == "test_peso").first()
     if not cat:
         cat = UnitCategory(code="test_peso", name="Test Peso")
@@ -321,9 +340,8 @@ def unit(db: Session) -> "Unit":
 
 
 @pytest.fixture
-def category(db: Session) -> "Category":
+def category(db: Session) -> Category:
     """Crea una categoría de prueba."""
-    from app.models import Category
     uid = uuid4().hex[:6]
     c = Category(code=f"test_cat_{uid}", name=f"Test Category {uid}")
     db.add(c)
@@ -332,9 +350,8 @@ def category(db: Session) -> "Category":
 
 
 @pytest.fixture
-def subcategory(db: Session, category) -> "Subcategory":
+def subcategory(db: Session, category) -> Subcategory:
     """Crea una subcategoría de prueba."""
-    from app.models import Subcategory
     uid = uuid4().hex[:6]
     s = Subcategory(
         category_id=category.id,
@@ -347,9 +364,8 @@ def subcategory(db: Session, category) -> "Subcategory":
 
 
 @pytest.fixture
-def attribute(db: Session) -> "Attribute":
+def attribute(db: Session) -> Attribute:
     """Crea un atributo de prueba."""
-    from app.models import Attribute, AttributeType
     at = db.query(AttributeType).filter(AttributeType.code == "boolean").first()
     if not at:
         at = AttributeType(code="boolean", name="Booleano")
@@ -367,9 +383,8 @@ def attribute(db: Session) -> "Attribute":
 
 
 @pytest.fixture
-def tax(db: Session, country) -> "Tax":
+def tax(db: Session, country) -> Tax:
     """Crea un impuesto de prueba."""
-    from app.models import Tax
     uid = uuid4().hex[:6]
     t = Tax(
         country_id=country.id,
@@ -382,10 +397,10 @@ def tax(db: Session, country) -> "Tax":
     db.flush()
     return t
 
+
 @pytest.fixture
-def country(db: Session) -> "Country":
-    """Crea un país de prueba. Code de exactamente 2 caracteres."""
-    from app.models import Country, Currency, Timezone
+def country(db: Session) -> Country:
+    """Crea un país de prueba."""
     tz = db.query(Timezone).filter(Timezone.code == "America/Caracas").first()
     if not tz:
         tz = Timezone(
@@ -407,9 +422,7 @@ def country(db: Session) -> "Country":
         db.add(cur)
         db.flush()
     uid = uuid4().hex[:6]
-    # countries.code es VARCHAR(2): usar 2 chars exactos
     code = f"X{uid[0].upper()}"
-    # Evitar colisión con codes existentes
     existing = db.query(Country).filter(Country.code == code).first()
     if existing:
         code = f"Y{uid[1].upper()}"
@@ -427,16 +440,9 @@ def country(db: Session) -> "Country":
 
 @pytest.fixture
 def cleanup_register_schemas(db: Session):
-    """Fixture que limpia los schemas creados por tests de register.
-
-    Uso:
-        def test_x(cleanup_register_schemas, ...):
-            ...
-            cleanup_register_schemas.append("tenant_abc123")
-    """
+    """Fixture que limpia los schemas creados por tests de register."""
     schemas_to_drop: list[str] = []
     yield schemas_to_drop
-    # Cleanup al final del test
     for schema in schemas_to_drop:
         try:
             db.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
@@ -444,29 +450,25 @@ def cleanup_register_schemas(db: Session):
             pass
     db.commit()
 
-    # ---------------------------------------------------------------------------
-# Seeds mínimos para boe_test (país VE, currency USD, timezone, etc.)
+
+# ---------------------------------------------------------------------------
+# Seeds mínimos para boe_test
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="session", autouse=True)
 def _seed_minimal_data(_setup_database):
     """Carga datos maestros mínimos en boe_test (una vez por sesión).
 
-    Sin esto, los tests de register y subscription fallan.
+    Incluye:
+    - Timezone, Currency, Country, Vertical.
+    - Features.
+    - Planes + features + limits.
+    - Permisos (los permisos mínimos que los tests necesitan).
+    - Roles (Admin, Editor, Lector, SuperAdmin).
     """
     from decimal import Decimal
 
-    from app.models import (
-        Country,
-        Currency,
-        Feature,
-        Plan,
-        PlanFeature,
-        PlanLimit,
-        Role,
-        Timezone,
-        Vertical,
-    )
+    from app.models import Feature
 
     session = TestingSessionLocal()
     try:
@@ -518,16 +520,64 @@ def _seed_minimal_data(_setup_database):
             session.add(v)
             session.flush()
 
-        # --- Rol Admin ---
-        admin_role = session.query(Role).filter(Role.name == "Admin").first()
-        if not admin_role:
-            admin_role = Role(
-                name="Admin",
-                description="Administrador",
-                is_system=True,
+        # --- Permisos (los mínimos para que los tests funcionen) ---
+        permissions_data = [
+            ("resource", "crear"),
+            ("resource", "ver"),
+            ("resource", "editar"),
+            ("resource", "eliminar"),
+            ("supplier", "crear"),
+            ("supplier", "ver"),
+            ("supplier", "editar"),
+            ("supplier", "eliminar"),
+            ("bundle", "crear"),
+            ("bundle", "ver"),
+            ("bundle", "editar"),
+            ("bundle", "eliminar"),
+            ("purchase_request", "crear"),
+            ("purchase_request", "ver"),
+            ("purchase_request", "editar"),
+            ("purchase_request", "eliminar"),
+            ("purchase_request", "aprobar"),
+            ("warehouse", "crear"),
+            ("warehouse", "ver"),
+            ("warehouse", "editar"),
+            ("warehouse", "eliminar"),
+            ("movement", "crear"),
+            ("movement", "ver"),
+            ("tenant", "configurar"),
+            ("tenant", "ver_usuarios"),
+            ("tenant", "gestionar_roles"),
+            ("tenant", "gestionar_permisos"),
+        ]
+        for module, action in permissions_data:
+            existing = (
+                session.query(Permission)
+                .filter(Permission.module == module, Permission.action == action)
+                .first()
             )
-            session.add(admin_role)
-            session.flush()
+            if not existing:
+                session.add(
+                    Permission(
+                        module=module,
+                        action=action,
+                        description=f"{action} {module}",
+                    )
+                )
+        session.flush()
+
+        # --- Roles ---
+        for role_name in ["Admin", "Editor", "Lector", "SuperAdmin"]:
+            existing = session.query(Role).filter(Role.name == role_name).first()
+            if not existing:
+                session.add(
+                    Role(
+                        name=role_name,
+                        description=role_name,
+                        is_system=True,
+                    )
+                )
+        session.flush()
 
         # --- Features mínimas ---
         feature_codes = [
@@ -615,14 +665,12 @@ def _seed_minimal_data(_setup_database):
             session.add(plan)
             session.flush()
 
-            # Features
             for fcode in pdata["features"]:
                 feature = features.get(fcode)
                 if feature:
                     session.add(
                         PlanFeature(plan_id=plan.id, feature_id=feature.id)
                     )
-            # Limits
             for lcode, lvalue in pdata["limits"].items():
                 session.add(
                     PlanLimit(plan_id=plan.id, limit_code=lcode, value=lvalue)
@@ -631,3 +679,178 @@ def _seed_minimal_data(_setup_database):
         session.commit()
     finally:
         session.close()
+
+# ---------------------------------------------------------------------------
+# Fixtures para tests de availability
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Fixtures para tests de availability
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def resource(db: Session, tenant, unit) -> "Resource":
+    """Crea un recurso en el schema del tenant."""
+    from uuid import uuid4 as _uuid4
+    from app.models import Resource
+
+    # Set search_path al schema del tenant
+    db.execute(text(f'SET LOCAL search_path TO "{tenant.schema_name}", public'))
+
+    uid = _uuid4().hex[:6]
+    r = Resource(
+        name=f"Recurso {uid}",
+        resource_type="materia_prima",
+        base_unit_id=unit.id,
+        cost=10.0,
+        waste_percent=0,
+        is_active=True,
+    )
+    db.add(r)
+    db.flush()
+
+    # Restaurar search_path
+    db.execute(text('SET LOCAL search_path TO public'))
+    return r
+
+
+@pytest.fixture
+def warehouse(db: Session, tenant) -> "Warehouse":
+    """Crea un warehouse en el schema del tenant."""
+    from uuid import uuid4 as _uuid4
+    from app.models import Warehouse
+
+    db.execute(text(f'SET LOCAL search_path TO "{tenant.schema_name}", public'))
+
+    uid = _uuid4().hex[:6]
+    wh = Warehouse(
+        name=f"Warehouse {uid}",
+        code=f"WH-{uid}",
+        is_active=True,
+    )
+    db.add(wh)
+    db.flush()
+
+    db.execute(text('SET LOCAL search_path TO public'))
+    return wh
+
+
+@pytest.fixture
+def stock_lot(db: Session, tenant, resource, warehouse) -> "StockLot":
+    """Crea un lote de stock de prueba (5 unidades)."""
+    from datetime import datetime, timezone
+    from decimal import Decimal
+    from uuid import uuid4 as _uuid4
+    from app.models import StockLot
+
+    db.execute(text(f'SET LOCAL search_path TO "{tenant.schema_name}", public'))
+
+    lot = StockLot(
+        warehouse_id=warehouse.id,
+        resource_id=resource.id,
+        lot_code=f"LOT-{_uuid4().hex[:6]}",
+        quantity=Decimal("5"),
+        received_at=datetime.now(timezone.utc),
+    )
+    db.add(lot)
+    db.flush()
+
+    db.execute(text('SET LOCAL search_path TO public'))
+    return lot
+
+
+@pytest.fixture
+def supplier_with_offer(db: Session, tenant, resource) -> "Supplier":
+    """Crea un proveedor con oferta para el recurso."""
+    from decimal import Decimal
+    from uuid import uuid4 as _uuid4
+    from app.models import Supplier, SupplierResource
+
+    db.execute(text(f'SET LOCAL search_path TO "{tenant.schema_name}", public'))
+
+    uid = _uuid4().hex[:6]
+    s = Supplier(
+        code=f"SUP-{uid}",
+        name=f"Proveedor {uid}",
+        is_active=True,
+    )
+    db.add(s)
+    db.flush()
+
+    sr = SupplierResource(
+        supplier_id=s.id,
+        resource_id=resource.id,
+        unit_price=Decimal("2.50"),
+        lead_time_days=3,
+        min_quantity=Decimal("1"),
+    )
+    db.add(sr)
+    db.flush()
+
+    db.execute(text('SET LOCAL search_path TO public'))
+    return s
+
+
+@pytest.fixture
+def stock_lot_from_other_tenant(db: Session, tenant_factory) -> "StockLot":
+    """Crea un stock_lot en un tenant distinto (para probar aislamiento)."""
+    from datetime import datetime, timezone
+    from decimal import Decimal
+    from uuid import uuid4 as _uuid4
+    from app.models import Resource, StockLot, Unit, UnitCategory, Warehouse
+
+    other_tenant = tenant_factory(name="Other Tenant for Availability")
+
+    # Set search_path al schema del otro tenant
+    db.execute(text(f'SET LOCAL search_path TO "{other_tenant.schema_name}", public'))
+
+    # Crear UnitCategory y Unit
+    cat = db.query(UnitCategory).filter(UnitCategory.code == "test_peso").first()
+    if not cat:
+        cat = UnitCategory(code="test_peso", name="Test Peso")
+        db.add(cat)
+        db.flush()
+    u = Unit(
+        code=f"other_kg_{_uuid4().hex[:4]}",
+        name="Other Kilogramo",
+        symbol="okg",
+        category_id=cat.id,
+        is_base=True,
+    )
+    db.add(u)
+    db.flush()
+
+    # Crear Resource
+    r = Resource(
+        name=f"Recurso Other {_uuid4().hex[:6]}",
+        resource_type="materia_prima",
+        base_unit_id=u.id,
+        cost=10.0,
+        waste_percent=0,
+        is_active=True,
+    )
+    db.add(r)
+    db.flush()
+
+    # Crear Warehouse
+    wh = Warehouse(
+        name="Other Warehouse",
+        code=f"OWH-{_uuid4().hex[:6]}",
+        is_active=True,
+    )
+    db.add(wh)
+    db.flush()
+
+    # Crear StockLot
+    lot = StockLot(
+        warehouse_id=wh.id,
+        resource_id=r.id,
+        lot_code=f"LOT-O-{_uuid4().hex[:6]}",
+        quantity=Decimal("100"),
+        received_at=datetime.now(timezone.utc),
+    )
+    db.add(lot)
+    db.flush()
+
+    db.execute(text('SET LOCAL search_path TO public'))
+    return lot

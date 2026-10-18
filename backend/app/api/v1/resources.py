@@ -2,20 +2,16 @@
 
 Todos los endpoints requieren autenticación + tenant.
 El `SET LOCAL search_path` lo aplica `get_current_tenant`.
-
-Novedades Fase 2:
-- category_id, subcategory_id, base_unit_id (FKs a datos maestros)
-- attributes inline en create
-- taxes inline en create
-- Response con attributes y taxes anidados
 """
 
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
 from app.services.plan_service import check_plan_limit
+from app.api.permissions import require_permission
 from app.api.deps import get_current_tenant
 from app.core.database import get_db
 from app.models import (
@@ -36,8 +32,6 @@ from app.schemas.resource import (
     ResourceResponse,
     ResourceUpdate,
 )
-
-from app.services.plan_service import check_plan_limit
 
 router = APIRouter(prefix="/resources", tags=["resources"])
 
@@ -79,7 +73,6 @@ def _build_resource_response(
     db: Session, resource: Resource
 ) -> ResourceResponse:
     """Construye la respuesta enriquecida con datos de attributes y taxes."""
-    # Cargar atributos con datos maestros
     attributes_data = []
     for ra in resource.attributes:
         attr = db.query(Attribute).filter(Attribute.id == ra.attribute_id).first()
@@ -91,7 +84,6 @@ def _build_resource_response(
                 "value": ra.value,
             })
 
-    # Cargar taxes con datos maestros
     taxes_data = []
     for rt in resource.taxes:
         tax = db.query(Tax).filter(Tax.id == rt.tax_id).first()
@@ -190,17 +182,29 @@ def get_resource(
     "",
     response_model=ResourceResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("resource", "crear"))],
 )
 def create_resource(
     data: ResourceCreate,
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Crea un recurso en el schema del tenant autenticado.
+    """Crea un recurso en el schema del tenant autenticado."""
+    # ============ DIAGNÓSTICO TEMPORAL (QUITAR DESPUÉS) ============
+    result = db.execute(text("SHOW search_path")).scalar()
+    print(f"\n[DIAGNÓSTICO] search_path: {result}")
+    result2 = db.execute(text(
+        "SELECT table_schema FROM information_schema.tables "
+        "WHERE table_name = 'resources'"
+    )).fetchall()
+    print(f"[DIAGNÓSTICO] tablas resources visibles: {result2}")
+    result3 = db.execute(text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name = 'resources' AND column_name = 'waste_percent'"
+    )).fetchall()
+    print(f"[DIAGNÓSTICO] waste_percent visible: {result3}")
+    # =============================================================
 
-    Usa flush (no commit) para mantener viva la transacción con su
-    search_path. El commit lo hace get_db al terminar el request.
-    """
     # Verificar límite del plan
     check_plan_limit(db, current_tenant, "recursos", Resource)
 
@@ -226,7 +230,7 @@ def create_resource(
             detail="Ya existe un recurso con ese nombre y tipo",
         )
 
-    # Crear el recurso (sin atributos ni taxes todavía)
+    # Crear el recurso
     resource_data = data.model_dump(exclude={"attributes", "taxes"})
     resource = Resource(**resource_data)
     db.add(resource)
@@ -256,27 +260,26 @@ def create_resource(
     db.flush()
     db.refresh(resource)
 
-    # Recargar con atributos y taxes
     resource = _get_resource_or_404(db, resource.id)
     return _build_resource_response(db, resource)
 
 
-@router.put("/{resource_id}", response_model=ResourceResponse)
+@router.put(
+    "/{resource_id}",
+    response_model=ResourceResponse,
+    dependencies=[Depends(require_permission("resource", "editar"))],
+)
 def update_resource(
     resource_id: UUID,
     data: ResourceUpdate,
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Actualiza un recurso.
-
-    Los atributos e impuestos se gestionan con endpoints dedicados.
-    """
+    """Actualiza un recurso."""
     resource = _get_resource_or_404(db, resource_id)
 
     update_data = data.model_dump(exclude_unset=True)
 
-    # Validar FKs si vienen
     if "base_unit_id" in update_data:
         _validate_fk_exists(db, Unit, update_data["base_unit_id"], "Unidad")
     if "category_id" in update_data and update_data["category_id"]:
@@ -284,7 +287,6 @@ def update_resource(
     if "subcategory_id" in update_data and update_data["subcategory_id"]:
         _validate_fk_exists(db, Subcategory, update_data["subcategory_id"], "Subcategoría")
 
-    # Si cambia el nombre, verificar unicidad
     if "name" in update_data and update_data["name"] != resource.name:
         existing = (
             db.query(Resource)
@@ -307,12 +309,15 @@ def update_resource(
     db.flush()
     db.refresh(resource)
 
-    # Recargar con atributos y taxes
     resource = _get_resource_or_404(db, resource_id)
     return _build_resource_response(db, resource)
 
 
-@router.delete("/{resource_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{resource_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("resource", "eliminar"))],
+)
 def delete_resource(
     resource_id: UUID,
     current_tenant: Tenant = Depends(get_current_tenant),

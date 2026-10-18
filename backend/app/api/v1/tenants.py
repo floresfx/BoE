@@ -126,14 +126,14 @@ def create_tenant(data: TenantCreate, db: Session = Depends(get_db)):
     db.commit()  # commit ANTES de Alembic (abre su propia conexión)
 
     # Aplicar migraciones al nuevo schema
-    try:
-        _apply_migrations_to_schema(schema_name)
-    except RuntimeError as e:
-        # TODO: cleanup (DROP SCHEMA) si la migración falla
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Tenant creado pero migraciones fallaron: {e}",
-        )
+    if os.getenv("SKIP_TENANT_MIGRATIONS") != "1":
+        try:
+            _apply_migrations_to_schema(schema_name)
+        except RuntimeError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Tenant creado pero migraciones fallaron: {e}",
+            )
 
     db.refresh(tenant)
     return TenantResponse.model_validate(tenant)

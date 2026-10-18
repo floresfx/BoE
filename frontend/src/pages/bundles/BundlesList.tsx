@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
@@ -11,8 +12,10 @@ import { ConfirmDialog } from '../resources/ConfirmDialog'
 import { BundleComponentsModal } from './BundleComponentsModal'
 import { BundleExplodeModal } from './BundleExplodeModal'
 import { BundleForm } from './BundleForm'
+import { Can } from '../../components/auth/Can'
 
 export function BundlesList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filterActive, setFilterActive] = useState<'' | 'true' | 'false'>('true')
   const [formOpen, setFormOpen] = useState(false)
@@ -59,7 +62,9 @@ export function BundlesList() {
             Paquetes que agrupan varios recursos con cantidades.
           </p>
         </div>
-        <Button onClick={handleNew}>+ Nuevo paquete</Button>
+        <Can module="bundle" action="crear">
+          <Button onClick={handleNew}>+ Nuevo paquete</Button>
+        </Can>
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -121,38 +126,59 @@ export function BundlesList() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setManaging(b)}
-                    >
-                      Componentes ({b.components.length})
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setExploding(b)}
-                    >
-                      Explotar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleEdit(b)}
-                    >
-                      Editar
-                    </Button>
-                    {b.is_active && (
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => setDeleting(b)}
-                      >
-                        Desactivar
-                      </Button>
-                    )}
-                  </td>
-                </tr>
+                      <Can module="bundle" action="editar">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setManaging(b)}
+                        >
+                          Componentes ({b.components.length})
+                        </Button>
+                      </Can>
+
+                      <Can module="bundle" action="ver">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setExploding(b)}
+                        >
+                          Explotar
+                        </Button>
+                      </Can>
+
+                      <Can module="bundle" action="ver">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => navigate(`/bundles/${b.id}/cost`)}
+                        >
+                          Ver costos
+                        </Button>
+                      </Can>
+
+                      <Can module="bundle" action="editar">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleEdit(b)}
+                        >
+                          Editar
+                        </Button>
+                      </Can>
+
+                      {b.is_active && (
+                        <Can module="bundle" action="eliminar">
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setDeleting(b)}
+                          >
+                            Desactivar
+                          </Button>
+                        </Can>
+                      )}
+                    </td>
+                  </tr>
               ))}
             </tbody>
           </table>

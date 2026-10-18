@@ -5,8 +5,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
-
 from app.api.deps import get_current_tenant
+from app.api.permissions import require_permission
 from app.core.database import get_db
 from app.models import (
     PurchaseRequest,
@@ -143,7 +143,10 @@ def get_request(
 
 
 @router.post(
-    "", response_model=PurchaseRequestResponse, status_code=status.HTTP_201_CREATED
+    "",
+    response_model=PurchaseRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("purchase_request", "crear"))],
 )
 def create_request(
     data: PurchaseRequestCreate,
@@ -238,7 +241,11 @@ def create_from_bundle(
     return _build_response(db, req)
 
 
-@router.put("/{request_id}", response_model=PurchaseRequestResponse)
+@router.put(
+    "/{request_id}/status",
+    response_model=PurchaseRequestResponse,
+    dependencies=[Depends(require_permission("purchase_request", "aprobar"))],
+)
 def update_request(
     request_id: UUID,
     data: PurchaseRequestUpdate,

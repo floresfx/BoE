@@ -26,6 +26,7 @@ def _create_resources_tables(db: Session, schema: str) -> None:
             subcategory_id UUID,
             base_unit_id UUID NOT NULL,
             cost NUMERIC(12, 2),
+            waste_percent NUMERIC(5, 2) NOT NULL DEFAULT 0,
             is_active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

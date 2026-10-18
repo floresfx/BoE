@@ -9,6 +9,10 @@ from app.core.security import create_access_token, verify_password
 from app.models import User
 from app.schemas.user import UserLogin, UserLoginResponse, UserResponse
 
+from app.models import Permission, RolePermission, UserRole
+from app.schemas.permission import PermissionResponse
+from app.api.deps import get_current_user
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -61,3 +65,21 @@ def login(
 def get_me(current_user: User = Depends(get_current_user)):
     """Obtiene el usuario actual."""
     return UserResponse.model_validate(current_user)
+
+
+
+@router.get("/me/permissions", response_model=list[PermissionResponse])
+def get_my_permissions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Devuelve los permisos del usuario actual."""
+    perms = (
+        db.query(Permission)
+        .join(RolePermission, RolePermission.permission_id == Permission.id)
+        .join(UserRole, UserRole.role_id == RolePermission.role_id)
+        .filter(UserRole.user_id == current_user.id)
+        .distinct()
+        .all()
+    )
+    return [PermissionResponse.model_validate(p) for p in perms]

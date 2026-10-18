@@ -16,6 +16,7 @@ from uuid import UUID
 
 from sqlalchemy import Boolean, ForeignKey, Index, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Numeric
 
 from app.models.base import TimestampMixin, UUIDMixin
 from app.models.base_tenant import TenantBase
@@ -64,6 +65,11 @@ class Resource(TenantBase, UUIDMixin, TimestampMixin):
     cost: Mapped[Decimal | None] = mapped_column(
         Numeric(12, 2), nullable=True
     )
+
+    waste_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
+
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True
     )

@@ -4,6 +4,7 @@ from app.api.v1 import (
     access_logs,
     admin,
     auth,
+    availability,
     bundles,
     catalogs,
     movements,
@@ -52,3 +53,4 @@ api_router.include_router(stock.router)
 api_router.include_router(suppliers.router)
 api_router.include_router(bundles.router)
 api_router.include_router(purchase_requests.router)
+api_router.include_router(availability.router)
