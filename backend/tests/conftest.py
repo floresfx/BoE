@@ -121,7 +121,9 @@ def client(db: Session) -> Generator[TestClient, None, None]:
 
 @pytest.fixture
 def tenant_factory(db: Session):
-    """Crea tenants de prueba con schema real."""
+    """Crea tenants de prueba con schema real y tablas operativas completas."""
+    from app.services.tenant_service import create_tenant_schema
+
     created_schemas: list[str] = []
 
     def _create(
@@ -143,7 +145,8 @@ def tenant_factory(db: Session):
         )
         db.add(tenant)
         db.flush()
-        db.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}"'))
+        # Crear schema + TODAS las tablas operativas con el SQL de producción
+        create_tenant_schema(db, schema_name)
         created_schemas.append(schema_name)
         return tenant
 

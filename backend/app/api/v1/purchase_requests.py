@@ -4,7 +4,9 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
+
 from app.api.deps import get_current_tenant
 from app.api.permissions import require_permission
 from app.core.database import get_db
@@ -34,7 +36,30 @@ router = APIRouter(prefix="/purchase-requests", tags=["purchase-requests"])
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _get_or_404(db: Session, request_id: UUID) -> PurchaseRequest:
+def _set_tenant_schema(db: Session, tenant: Tenant) -> None:
+    """Fuerza el search_path al schema del tenant (defensa en profundidad)."""
+    db.execute(text(f'SET LOCAL search_path TO "{tenant.schema_name}", public'))
+
+
+def _get_or_404(
+    db: Session, request_id: UUID, tenant: Tenant
+) -> PurchaseRequest:
+    """Busca una solicitud en el schema del tenant actual (filtrado explícito)."""
+    from sqlalchemy import text
+
+    # Query explícita al schema del tenant (sin depender del search_path)
+    result = db.execute(
+        text(
+            f'SELECT id FROM "{tenant.schema_name}".purchase_requests '
+            f'WHERE id = :request_id'
+        ),
+        {"request_id": str(request_id)},
+    ).scalar()
+
+    if result is None:
+        raise HTTPException(404, "Solicitud no encontrada")
+
+    # Ahora cargar el objeto completo
     r = (
         db.query(PurchaseRequest)
         .options(joinedload(PurchaseRequest.lines))
@@ -114,6 +139,7 @@ def list_requests(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
+    _set_tenant_schema(db, current_tenant)
     query = db.query(PurchaseRequest).options(joinedload(PurchaseRequest.lines))
     if status_filter:
         query = query.filter(PurchaseRequest.status == status_filter)
@@ -138,7 +164,7 @@ def get_request(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    r = _get_or_404(db, request_id)
+    r = _get_or_404(db, request_id, current_tenant)
     return _build_response(db, r)
 
 
@@ -153,6 +179,7 @@ def create_request(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
+    _set_tenant_schema(db, current_tenant)
     existing = (
         db.query(PurchaseRequest).filter(PurchaseRequest.code == data.code).first()
     )
@@ -190,7 +217,7 @@ def create_request(
 
     db.flush()
     db.refresh(req)
-    req = _get_or_404(db, req.id)
+    req = _get_or_404(db, req.id, current_tenant)
     return _build_response(db, req)
 
 
@@ -208,6 +235,7 @@ def create_from_bundle(
 
     Cada componente del bundle se convierte en una línea de la solicitud.
     """
+    _set_tenant_schema(db, current_tenant)
     exploded = explode_bundle(db, data.bundle_id, data.multiplier)
 
     code = data.code or _generate_code(db)
@@ -237,14 +265,18 @@ def create_from_bundle(
 
     db.flush()
     db.refresh(req)
-    req = _get_or_404(db, req.id)
+    req = _get_or_404(db, req.id, current_tenant)
     return _build_response(db, req)
 
 
+# ---------------------------------------------------------------------------
+# Update genérico (sin cambiar status)
+# ---------------------------------------------------------------------------
+
 @router.put(
-    "/{request_id}/status",
+    "/{request_id}",
     response_model=PurchaseRequestResponse,
-    dependencies=[Depends(require_permission("purchase_request", "aprobar"))],
+    dependencies=[Depends(require_permission("purchase_request", "editar"))],
 )
 def update_request(
     request_id: UUID,
@@ -252,7 +284,8 @@ def update_request(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    req = _get_or_404(db, request_id)
+    """Actualiza los datos generales de la solicitud (sin cambiar status)."""
+    req = _get_or_404(db, request_id, current_tenant)
     if req.status not in ("draft", "pending"):
         raise HTTPException(
             400, f"No se puede editar una solicitud en estado {req.status}"
@@ -261,11 +294,19 @@ def update_request(
         setattr(req, key, value)
     db.flush()
     db.refresh(req)
-    req = _get_or_404(db, request_id)
+    req = _get_or_404(db, request_id, current_tenant)
     return _build_response(db, req)
 
 
-@router.put("/{request_id}/status", response_model=PurchaseRequestResponse)
+# ---------------------------------------------------------------------------
+# Cambio de status
+# ---------------------------------------------------------------------------
+
+@router.put(
+    "/{request_id}/status",
+    response_model=PurchaseRequestResponse,
+    dependencies=[Depends(require_permission("purchase_request", "aprobar"))],
+)
 def update_status(
     request_id: UUID,
     data: PurchaseRequestStatusUpdate,
@@ -275,13 +316,17 @@ def update_status(
     """Cambia el estado de la solicitud."""
     if data.status not in PURCHASE_REQUEST_STATUSES:
         raise HTTPException(400, f"Estado inválido: {data.status}")
-    req = _get_or_404(db, request_id)
+    req = _get_or_404(db, request_id, current_tenant)
     req.status = data.status
     db.flush()
     db.refresh(req)
-    req = _get_or_404(db, request_id)
+    req = _get_or_404(db, request_id, current_tenant)
     return _build_response(db, req)
 
+
+# ---------------------------------------------------------------------------
+# Delete
+# ---------------------------------------------------------------------------
 
 @router.delete("/{request_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_request(
@@ -290,7 +335,7 @@ def delete_request(
     db: Session = Depends(get_db),
 ):
     """Solo se pueden borrar solicitudes en borrador."""
-    req = _get_or_404(db, request_id)
+    req = _get_or_404(db, request_id, current_tenant)
     if req.status != "draft":
         raise HTTPException(400, "Solo se pueden borrar solicitudes en borrador")
     db.delete(req)
@@ -315,7 +360,8 @@ def add_line(
     """Añade una línea a la solicitud."""
     from uuid import UUID as UUIDType
 
-    req = _get_or_404(db, request_id)
+    _set_tenant_schema(db, current_tenant)
+    req = _get_or_404(db, request_id, current_tenant)
     if req.status not in ("draft", "pending"):
         raise HTTPException(400, "La solicitud no acepta cambios en su estado actual")
 
@@ -368,7 +414,8 @@ def remove_line(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    req = _get_or_404(db, request_id)
+    _set_tenant_schema(db, current_tenant)
+    req = _get_or_404(db, request_id, current_tenant)
     if req.status not in ("draft", "pending"):
         raise HTTPException(400, "La solicitud no acepta cambios en su estado actual")
     line = (
