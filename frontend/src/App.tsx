@@ -16,6 +16,9 @@ import { AvailabilityChecker } from './pages/availability/AvailabilityChecker'
 import { PurchaseRequestsList } from './pages/purchase_requests/PurchaseRequestsList'
 import { PurchaseRequestDetail } from './pages/purchase_requests/PurchaseRequestDetail'
 import { NewPurchaseRequest } from './pages/purchase_requests/NewPurchaseRequest'
+import { CostingReport } from './pages/inventory/CostingReport'
+import { Settings } from './pages/Settings'
+import { ProductionKanban } from './pages/production/ProductionKanban'
 
 
 export function App() {
@@ -55,6 +58,9 @@ export function App() {
         <Route path="purchase-requests" element={<PurchaseRequestsList />} />
         <Route path="purchase-requests/new" element={<NewPurchaseRequest />} />
         <Route path="purchase-requests/:requestId" element={<PurchaseRequestDetail />} />
+        <Route path="inventory/costing" element={<CostingReport />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="production" element={<ProductionKanban />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

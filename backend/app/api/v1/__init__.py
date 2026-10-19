@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+
 from app.api.v1 import (
     access_logs,
     admin,
@@ -7,6 +8,8 @@ from app.api.v1 import (
     availability,
     bundles,
     catalogs,
+    costing,
+    production,
     movements,
     permissions,
     plans,
@@ -54,3 +57,5 @@ api_router.include_router(suppliers.router)
 api_router.include_router(bundles.router)
 api_router.include_router(purchase_requests.router)
 api_router.include_router(availability.router)
+api_router.include_router(costing.router)
+api_router.include_router(production.router)

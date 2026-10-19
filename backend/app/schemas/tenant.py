@@ -53,6 +53,7 @@ class TenantResponse(TenantBase):
     vertical_id: UUID | None
     plan_id: UUID | None
     status: TenantStatus
+    inventory_costing_method: str = "fifo"
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}
@@ -62,3 +63,6 @@ class TenantListResponse(BaseSchema):
     """Lista de tenants."""
     items: list[TenantResponse]
     total: int
+
+class TenantSettingsUpdate(BaseModel):
+    inventory_costing_method: str | None = None

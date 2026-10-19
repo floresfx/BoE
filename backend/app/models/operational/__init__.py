@@ -20,6 +20,15 @@ from app.models.operational.supplier import Supplier
 from app.models.operational.supplier_resource import SupplierResource
 from app.models.operational.warehouse import Warehouse
 
+from app.models.operational.production_plan import (
+    ProductionPlan,
+    PRODUCTION_PLAN_STATUSES,
+)
+from app.models.operational.production_order import (
+    ProductionOrder,
+    PRODUCTION_ORDER_STATUSES,
+)
+
 __all__ = [
     "Resource",
     "RESOURCE_TYPES",
@@ -40,4 +49,8 @@ __all__ = [
     "PurchaseOrder",
     "PurchaseOrderLine",
     "PURCHASE_ORDER_STATUSES",
+    "ProductionPlan",
+    "PRODUCTION_PLAN_STATUSES",
+    "ProductionOrder",
+    "PRODUCTION_ORDER_STATUSES",
 ]

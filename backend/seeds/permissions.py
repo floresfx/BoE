@@ -61,32 +61,21 @@ PERMISSIONS = [
     {"module": "resource", "action": "editar", "description": "Editar recursos"},
     {"module": "resource", "action": "eliminar", "description": "Eliminar recursos"},
 
-    # Purchase Request
-    {"module": "purchase_request", "action": "ver", "description": "Ver solicitudes de compra"},
-    {"module": "purchase_request", "action": "crear", "description": "Crear solicitudes de compra"},
-    {"module": "purchase_request", "action": "aprobar", "description": "Aprobar solicitudes de compra"},
-    {"module": "purchase_request", "action": "recibir", "description": "Recibir mercancía"},
+    # Supplier
+    {"module": "supplier", "action": "ver", "description": "Ver proveedores"},
+    {"module": "supplier", "action": "crear", "description": "Crear proveedores"},
+    {"module": "supplier", "action": "editar", "description": "Editar proveedores"},
+    {"module": "supplier", "action": "eliminar", "description": "Eliminar proveedores"},
 
-    # Tenant
-    {"module": "tenant", "action": "configurar", "description": "Configurar tenant"},
-    {"module": "tenant", "action": "ver_usuarios", "description": "Ver usuarios"},
-    {"module": "tenant", "action": "invitar_usuarios", "description": "Invitar usuarios"},
-    {"module": "tenant", "action": "gestionar_roles", "description": "Gestionar roles"},
-    {"module": "tenant", "action": "gestionar_permisos", "description": "Gestionar permisos"},
-    {"module": "tenant", "action": "ver_logs", "description": "Ver logs"},
-    {"module": "tenant", "action": "exportar_todo", "description": "Exportar todos los datos"},
-    {"module": "tenant", "action": "eliminar", "description": "Eliminar tenant"},
+    # Warehouse
+    {"module": "warehouse", "action": "ver", "description": "Ver almacenes"},
+    {"module": "warehouse", "action": "crear", "description": "Crear almacenes"},
+    {"module": "warehouse", "action": "editar", "description": "Editar almacenes"},
+    {"module": "warehouse", "action": "eliminar", "description": "Eliminar almacenes"},
 
-    # Availability
-    {"module": "availability", "action": "ver", "description": "Ver disponibilidad"},
-
-    # Bundle
-    {"module": "bundle", "action": "ver", "description": "Ver paquetes"},
-
-    {"module": "supplier_quote", "action": "ver", "description": "Ver cotizaciones"},
-    {"module": "supplier_quote", "action": "crear", "description": "Crear cotizaciones"},
-    {"module": "supplier_quote", "action": "editar", "description": "Editar cotizaciones"},
-    {"module": "supplier_quote", "action": "eliminar", "description": "Eliminar cotizaciones"},
+    # Movement
+    {"module": "movement", "action": "ver", "description": "Ver movimientos"},
+    {"module": "movement", "action": "crear", "description": "Crear movimientos"},
 
     # Purchase Request
     {"module": "purchase_request", "action": "ver", "description": "Ver solicitudes"},
@@ -103,19 +92,29 @@ PERMISSIONS = [
     {"module": "supplier_quote", "action": "eliminar", "description": "Eliminar cotizaciones"},
     {"module": "supplier_quote", "action": "seleccionar", "description": "Seleccionar cotización"},
 
-    # Supplier (si existe)
-    {"module": "supplier", "action": "ver", "description": "Ver proveedores"},
-    {"module": "supplier", "action": "crear", "description": "Crear proveedores"},
-    {"module": "supplier", "action": "editar", "description": "Editar proveedores"},
-    {"module": "supplier", "action": "eliminar", "description": "Eliminar proveedores"},
-    
+    # Tenant
+    {"module": "tenant", "action": "configurar", "description": "Configurar tenant"},
+    {"module": "tenant", "action": "ver_usuarios", "description": "Ver usuarios"},
+    {"module": "tenant", "action": "invitar_usuarios", "description": "Invitar usuarios"},
+    {"module": "tenant", "action": "gestionar_roles", "description": "Gestionar roles"},
+    {"module": "tenant", "action": "gestionar_permisos", "description": "Gestionar permisos"},
+    {"module": "tenant", "action": "ver_logs", "description": "Ver logs"},
+    {"module": "tenant", "action": "exportar_todo", "description": "Exportar todos los datos"},
+    {"module": "tenant", "action": "eliminar", "description": "Eliminar tenant"},
 
-    
+    # Availability
+    {"module": "availability", "action": "ver", "description": "Ver disponibilidad"},
+
+    # Production
+    {"module": "production", "action": "ver", "description": "Ver producción"},
+    {"module": "production", "action": "crear", "description": "Crear producción"},
+    {"module": "production", "action": "editar", "description": "Editar producción"},
+    {"module": "production", "action": "eliminar", "description": "Eliminar producción"},
 ]
 
 
 def seed_permissions(db: Session) -> int:
-    """Crea los permisos iniciales."""
+    """Crea los permisos iniciales. Idempotente."""
     count = 0
     for data in PERMISSIONS:
         existing = (
@@ -128,6 +127,7 @@ def seed_permissions(db: Session) -> int:
         )
         if not existing:
             db.add(Permission(**data))
+            db.flush()  # Flush para que el siguiente existing lo detecte
             count += 1
     db.commit()
     return count

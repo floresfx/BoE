@@ -3,19 +3,20 @@ import { NavLink } from 'react-router-dom'
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: '🏠', disabled: false },
   { to: '/resources', label: 'Recursos', icon: '🧱', disabled: false },
-  { to: '/planificar', label: 'Planificar', icon: '📅', disabled: true },
+  { to: '/production', label: 'Producción', icon: '🏭', disabled: false },
   { to: '/ejecutar', label: 'Ejecutar', icon: '⚙️', disabled: true },
-  { to: '/inventario', label: 'Inventario', icon: '📦', disabled: true },
   { to: '/suministro', label: 'Suministro', icon: '🚚', disabled: true },
   { to: '/revisar', label: 'Revisar', icon: '🔍', disabled: true },
-  { to: '/configuracion', label: 'Configuración', icon: '⚙️', disabled: true },
   { to: '/catalogs', label: 'Catálogos', icon: '📚', disabled: false },
   { to: '/admin',label: 'Admin SaaS', icon: '⚙️', disabled: false },
   { to: '/inventory', label: 'Inventario', icon: '📦', disabled: false },
+  { to: '/inventory/costing', label: 'Costeo', icon: '💰', disabled: false },
   { to: '/suppliers', label: 'Proveedores', icon: '🏭', disabled: false },
   { to: '/bundles', label: 'Paquetes', icon: '📦', disabled: false },
   { to: '/purchase-requests', label: 'Solicitudes', icon: '📋', disabled: false},
   { to: '/availability', label: 'Disponibilidad', icon: '✅', disabled: false},
+  { to: '/settings', label: 'Configuración', icon: '⚙️', disabled: false},
+
 
 ]
 

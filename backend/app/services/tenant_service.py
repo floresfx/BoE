@@ -34,7 +34,6 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
     db.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}"'))
 
     # Crear tablas operativas dentro del schema
-    # (por ahora solo resources, resources_attributes, resources_taxes)
     db.execute(text(f"""
         CREATE TABLE IF NOT EXISTS "{schema_name}"."resources" (
             id UUID PRIMARY KEY,
@@ -71,7 +70,7 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
             UNIQUE (resource_id, tax_id)
         )
     """))
-    
+
     # Warehouses
     db.execute(text(f"""
         CREATE TABLE IF NOT EXISTS "{schema_name}"."warehouses" (
@@ -139,7 +138,7 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
             UNIQUE (code)
         )
     """))
-    
+
     db.execute(text(f"""
         CREATE TABLE IF NOT EXISTS "{schema_name}"."supplier_resources" (
             id UUID PRIMARY KEY,
@@ -157,7 +156,7 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
         )
     """))
 
-        # Bundles
+    # Bundles
     db.execute(text(f"""
         CREATE TABLE IF NOT EXISTS "{schema_name}"."bundles" (
             id UUID PRIMARY KEY,
@@ -213,7 +212,7 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
             UNIQUE (request_id, resource_id)
         )
     """))
-    
+
     # Supplier Quotes
     db.execute(text(f"""
         CREATE TABLE IF NOT EXISTS "{schema_name}"."supplier_quotes" (
@@ -265,6 +264,48 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
         )
     """))
 
+    # Production Plans
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."production_plans" (
+            id UUID PRIMARY KEY,
+            code VARCHAR(50) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft',
+            target_date TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (code)
+        )
+    """))
+
+    # Production Orders
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."production_orders" (
+            id UUID PRIMARY KEY,
+            code VARCHAR(50) NOT NULL,
+            plan_id UUID REFERENCES "{schema_name}".production_plans(id) ON DELETE SET NULL,
+            bundle_id UUID NOT NULL REFERENCES "{schema_name}".bundles(id) ON DELETE RESTRICT,
+            quantity NUMERIC(14, 4) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft',
+            start_date TIMESTAMPTZ,
+            end_date TIMESTAMPTZ,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (code)
+        )
+    """))
+    # Índices con nombres únicos (no chocan con purchase_orders)
+    db.execute(text(f"""
+        CREATE INDEX IF NOT EXISTS ix_prod_order_status
+        ON "{schema_name}"."production_orders" (status)
+    """))
+    db.execute(text(f"""
+        CREATE INDEX IF NOT EXISTS ix_prod_order_bundle
+        ON "{schema_name}"."production_orders" (bundle_id)
+    """))
+
     db.flush()
 
 
@@ -276,22 +317,12 @@ def drop_tenant_schema(db: Session, schema_name: str) -> None:
 
 
 def create_tenant_with_schema(db: Session, tenant: Tenant) -> Tenant:
-    """Crea el schema del tenant y lo persiste.
-
-    Args:
-        db: sesión SQLAlchemy (sin search_path de tenant, opera en public).
-        tenant: instancia de Tenant (sin schema_name asignado).
-
-    Returns:
-        El tenant con schema_name asignado y persistido.
-    """
+    """Crea el schema del tenant y lo persiste."""
     if not tenant.schema_name:
         tenant.schema_name = generate_schema_name()
 
-    # 1. Crear el schema en PostgreSQL
     create_tenant_schema(db, tenant.schema_name)
 
-    # 2. Persistir el tenant en public
     db.add(tenant)
     db.flush()
 

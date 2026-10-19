@@ -47,13 +47,8 @@ from app.models import (
     Warehouse,
 )
 
-import os
-
-# Desactivar migraciones de Alembic en tests
-os.environ["SKIP_TENANT_MIGRATIONS"] = "1"
-
 # ---------------------------------------------------------------------------
-# Engine de test (una sola vez por sesión)
+# Engine de test
 # ---------------------------------------------------------------------------
 
 TEST_DATABASE_URL = settings.DATABASE_URL.replace("boe_dev", "boe_test")
@@ -71,6 +66,11 @@ TestingSessionLocal = sessionmaker(
 @pytest.fixture(scope="session", autouse=True)
 def _setup_database():
     """Crea las tablas globales (public) al inicio de la sesión."""
+    with engine.connect() as conn:
+        conn.execute(text("SET search_path TO public"))
+        conn.commit()
+
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
 
@@ -94,7 +94,7 @@ def db() -> Generator[Session, None, None]:
 
 
 # ---------------------------------------------------------------------------
-# Cliente HTTP con override de get_db
+# Cliente HTTP
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
@@ -145,7 +145,6 @@ def tenant_factory(db: Session):
         )
         db.add(tenant)
         db.flush()
-        # Crear schema + TODAS las tablas operativas con el SQL de producción
         create_tenant_schema(db, schema_name)
         created_schemas.append(schema_name)
         return tenant
@@ -159,7 +158,7 @@ def tenant_factory(db: Session):
 
 @pytest.fixture
 def user_factory(db: Session):
-    """Crea users de prueba en un tenant con rol Admin y TODOS los permisos."""
+    """Crea users de prueba en un tenant con todos los permisos."""
 
     def _create(
         tenant: Tenant,
@@ -167,7 +166,6 @@ def user_factory(db: Session):
         password: str = "password123",
         status: str = "activo",
     ) -> tuple[User, str]:
-        """Devuelve (user, password_plaintext)."""
         uid = uuid4().hex
         user = User(
             tenant_id=tenant.id,
@@ -182,7 +180,6 @@ def user_factory(db: Session):
         db.add(user)
         db.flush()
 
-        # --- Crear un rol único por usuario ---
         role = Role(
             name=f"TestRole_{uid[:8]}",
             description="Test role with all permissions",
@@ -191,13 +188,11 @@ def user_factory(db: Session):
         db.add(role)
         db.flush()
 
-        # --- Asignar TODOS los permisos existentes al rol ---
         all_perms = db.query(Permission).all()
         for perm in all_perms:
             db.add(RolePermission(role_id=role.id, permission_id=perm.id))
         db.flush()
 
-        # --- Asignar el rol al user ---
         db.add(UserRole(user_id=user.id, role_id=role.id))
         db.flush()
 
@@ -217,12 +212,11 @@ def token_for_user():
 
 
 # ---------------------------------------------------------------------------
-# Fixtures legacy (compatibilidad con tests existentes)
+# Fixtures legacy
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
 def vertical(db: Session) -> Vertical:
-    """Crea un vertical de prueba."""
     uid = uuid4().hex
     v = Vertical(
         code=f"test_vertical_{uid[:8]}",
@@ -236,7 +230,6 @@ def vertical(db: Session) -> Vertical:
 
 @pytest.fixture
 def plan(db: Session, currency) -> Plan:
-    """Crea un plan de prueba."""
     uid = uuid4().hex
     p = Plan(
         code=f"test_plan_{uid[:8]}",
@@ -254,7 +247,6 @@ def plan(db: Session, currency) -> Plan:
 
 @pytest.fixture
 def profile(db: Session) -> Profile:
-    """Crea un perfil de prueba."""
     uid = uuid4().hex
     p = Profile(name=f"Test Profile {uid[:8]}", description="Test")
     db.add(p)
@@ -264,7 +256,6 @@ def profile(db: Session) -> Profile:
 
 @pytest.fixture
 def permission(db: Session) -> Permission:
-    """Crea un permiso de prueba."""
     uid = uuid4().hex
     p = Permission(module=f"test-{uid[:6]}", action="ver", description="Test")
     db.add(p)
@@ -274,13 +265,11 @@ def permission(db: Session) -> Permission:
 
 @pytest.fixture
 def tenant(db: Session, tenant_factory) -> Tenant:
-    """Tenant de prueba simple (compatibilidad)."""
     return tenant_factory(name="Test Tenant")
 
 
 @pytest.fixture
 def user(db: Session, tenant: Tenant, user_factory) -> User:
-    """Usuario de prueba simple (compatibilidad)."""
     user, _ = user_factory(
         tenant=tenant,
         email=f"test-{uuid4().hex[:8]}@test.com",
@@ -291,7 +280,6 @@ def user(db: Session, tenant: Tenant, user_factory) -> User:
 
 @pytest.fixture
 def auth_headers(client: TestClient, user: User) -> dict:
-    """Headers con JWT del usuario de prueba."""
     response = client.post(
         "/api/v1/auth/login",
         json={"email": user.email, "password": "password123"},
@@ -303,7 +291,6 @@ def auth_headers(client: TestClient, user: User) -> dict:
 
 @pytest.fixture
 def currency(db: Session) -> Currency:
-    """Crea una moneda de prueba."""
     uid = uuid4().hex
     c = Currency(
         code=f"TST{uid[:3].upper()}",
@@ -318,12 +305,11 @@ def currency(db: Session) -> Currency:
 
 
 # ---------------------------------------------------------------------------
-# Fixtures de datos maestros (Fase 2)
+# Fixtures de datos maestros
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
 def unit(db: Session) -> Unit:
-    """Crea una unidad de prueba."""
     cat = db.query(UnitCategory).filter(UnitCategory.code == "test_peso").first()
     if not cat:
         cat = UnitCategory(code="test_peso", name="Test Peso")
@@ -344,7 +330,6 @@ def unit(db: Session) -> Unit:
 
 @pytest.fixture
 def category(db: Session) -> Category:
-    """Crea una categoría de prueba."""
     uid = uuid4().hex[:6]
     c = Category(code=f"test_cat_{uid}", name=f"Test Category {uid}")
     db.add(c)
@@ -354,7 +339,6 @@ def category(db: Session) -> Category:
 
 @pytest.fixture
 def subcategory(db: Session, category) -> Subcategory:
-    """Crea una subcategoría de prueba."""
     uid = uuid4().hex[:6]
     s = Subcategory(
         category_id=category.id,
@@ -368,7 +352,6 @@ def subcategory(db: Session, category) -> Subcategory:
 
 @pytest.fixture
 def attribute(db: Session) -> Attribute:
-    """Crea un atributo de prueba."""
     at = db.query(AttributeType).filter(AttributeType.code == "boolean").first()
     if not at:
         at = AttributeType(code="boolean", name="Booleano")
@@ -387,7 +370,6 @@ def attribute(db: Session) -> Attribute:
 
 @pytest.fixture
 def tax(db: Session, country) -> Tax:
-    """Crea un impuesto de prueba."""
     uid = uuid4().hex[:6]
     t = Tax(
         country_id=country.id,
@@ -403,7 +385,6 @@ def tax(db: Session, country) -> Tax:
 
 @pytest.fixture
 def country(db: Session) -> Country:
-    """Crea un país de prueba."""
     tz = db.query(Timezone).filter(Timezone.code == "America/Caracas").first()
     if not tz:
         tz = Timezone(
@@ -443,7 +424,6 @@ def country(db: Session) -> Country:
 
 @pytest.fixture
 def cleanup_register_schemas(db: Session):
-    """Fixture que limpia los schemas creados por tests de register."""
     schemas_to_drop: list[str] = []
     yield schemas_to_drop
     for schema in schemas_to_drop:
@@ -455,252 +435,16 @@ def cleanup_register_schemas(db: Session):
 
 
 # ---------------------------------------------------------------------------
-# Seeds mínimos para boe_test
-# ---------------------------------------------------------------------------
-
-@pytest.fixture(scope="session", autouse=True)
-def _seed_minimal_data(_setup_database):
-    """Carga datos maestros mínimos en boe_test (una vez por sesión).
-
-    Incluye:
-    - Timezone, Currency, Country, Vertical.
-    - Features.
-    - Planes + features + limits.
-    - Permisos (los permisos mínimos que los tests necesitan).
-    - Roles (Admin, Editor, Lector, SuperAdmin).
-    """
-    from decimal import Decimal
-
-    from app.models import Feature
-
-    session = TestingSessionLocal()
-    try:
-        # --- Timezone Venezuela ---
-        tz = session.query(Timezone).filter(Timezone.code == "America/Caracas").first()
-        if not tz:
-            tz = Timezone(
-                code="America/Caracas",
-                friendly_name="Venezuela",
-                utc_offset="UTC-4",
-            )
-            session.add(tz)
-            session.flush()
-
-        # --- Currency USD ---
-        usd = session.query(Currency).filter(Currency.code == "USD").first()
-        if not usd:
-            usd = Currency(
-                code="USD",
-                name="Dólar estadounidense",
-                symbol="$",
-                decimals=2,
-                is_base=True,
-            )
-            session.add(usd)
-            session.flush()
-
-        # --- Country VE ---
-        ve = session.query(Country).filter(Country.code == "VE").first()
-        if not ve:
-            ve = Country(
-                code="VE",
-                name="Venezuela",
-                timezone_id=tz.id,
-                currency_id=usd.id,
-                phone_prefix="+58",
-            )
-            session.add(ve)
-            session.flush()
-
-        # --- Vertical clínicas_generales ---
-        v = session.query(Vertical).filter(Vertical.code == "clinicas_generales").first()
-        if not v:
-            v = Vertical(
-                code="clinicas_generales",
-                name="Clínicas generales",
-                description="Clínicas médicas generales",
-            )
-            session.add(v)
-            session.flush()
-
-        # --- Permisos (los mínimos para que los tests funcionen) ---
-        permissions_data = [
-            ("resource", "crear"),
-            ("resource", "ver"),
-            ("resource", "editar"),
-            ("resource", "eliminar"),
-            ("supplier", "crear"),
-            ("supplier", "ver"),
-            ("supplier", "editar"),
-            ("supplier", "eliminar"),
-            ("bundle", "crear"),
-            ("bundle", "ver"),
-            ("bundle", "editar"),
-            ("bundle", "eliminar"),
-            ("purchase_request", "crear"),
-            ("purchase_request", "ver"),
-            ("purchase_request", "editar"),
-            ("purchase_request", "eliminar"),
-            ("purchase_request", "aprobar"),
-            ("warehouse", "crear"),
-            ("warehouse", "ver"),
-            ("warehouse", "editar"),
-            ("warehouse", "eliminar"),
-            ("movement", "crear"),
-            ("movement", "ver"),
-            ("tenant", "configurar"),
-            ("tenant", "ver_usuarios"),
-            ("tenant", "gestionar_roles"),
-            ("tenant", "gestionar_permisos"),
-        ]
-        for module, action in permissions_data:
-            existing = (
-                session.query(Permission)
-                .filter(Permission.module == module, Permission.action == action)
-                .first()
-            )
-            if not existing:
-                session.add(
-                    Permission(
-                        module=module,
-                        action=action,
-                        description=f"{action} {module}",
-                    )
-                )
-        session.flush()
-
-        # --- Roles ---
-        for role_name in ["Admin", "Editor", "Lector", "SuperAdmin"]:
-            existing = session.query(Role).filter(Role.name == role_name).first()
-            if not existing:
-                session.add(
-                    Role(
-                        name=role_name,
-                        description=role_name,
-                        is_system=True,
-                    )
-                )
-        session.flush()
-
-        # --- Features mínimas ---
-        feature_codes = [
-            "inventario",
-            "planificacion",
-            "marketplace",
-            "notificaciones",
-        ]
-        features: dict[str, Feature] = {}
-        for code in feature_codes:
-            f = session.query(Feature).filter(Feature.code == code).first()
-            if not f:
-                f = Feature(
-                    code=code,
-                    name=code.title(),
-                    description=f"Feature {code}",
-                    applies_to="both",
-                )
-                session.add(f)
-                session.flush()
-            features[code] = f
-
-        # --- Planes ---
-        plans_data = [
-            {
-                "code": "mpr_base",
-                "name": "MPR Base",
-                "price": Decimal("39.00"),
-                "interval": "monthly",
-                "trial_days": 14,
-                "features": ["inventario", "planificacion", "notificaciones"],
-                "limits": {"recursos": 50, "usuarios": 3, "paquetes": 10},
-            },
-            {
-                "code": "mpr_plus",
-                "name": "MPR Plus",
-                "price": Decimal("79.00"),
-                "interval": "monthly",
-                "trial_days": 14,
-                "features": ["inventario", "planificacion", "marketplace", "notificaciones"],
-                "limits": {"recursos": None, "usuarios": 10, "paquetes": None},
-            },
-            {
-                "code": "mp_gratuito",
-                "name": "Marketplace Gratuito",
-                "price": Decimal("0.00"),
-                "interval": "monthly",
-                "trial_days": 0,
-                "features": ["marketplace", "notificaciones"],
-                "limits": {"productos": 10, "ventas_mes": 3, "leads_mes": 3},
-            },
-            {
-                "code": "mp_basico",
-                "name": "Marketplace Basico",
-                "price": Decimal("19.00"),
-                "interval": "monthly",
-                "trial_days": 0,
-                "features": ["marketplace", "notificaciones"],
-                "limits": {"productos": 100, "ventas_mes": 20, "leads_mes": 10},
-            },
-            {
-                "code": "mp_plus",
-                "name": "Marketplace Plus",
-                "price": Decimal("35.00"),
-                "interval": "monthly",
-                "trial_days": 0,
-                "features": ["marketplace", "notificaciones"],
-                "limits": {"productos": None, "ventas_mes": 40, "leads_mes": 30},
-            },
-        ]
-
-        for pdata in plans_data:
-            existing = session.query(Plan).filter(Plan.code == pdata["code"]).first()
-            if existing:
-                continue
-            plan = Plan(
-                code=pdata["code"],
-                name=pdata["name"],
-                price=pdata["price"],
-                currency_id=usd.id,
-                interval=pdata["interval"],
-                trial_days=pdata["trial_days"],
-                is_active=True,
-            )
-            session.add(plan)
-            session.flush()
-
-            for fcode in pdata["features"]:
-                feature = features.get(fcode)
-                if feature:
-                    session.add(
-                        PlanFeature(plan_id=plan.id, feature_id=feature.id)
-                    )
-            for lcode, lvalue in pdata["limits"].items():
-                session.add(
-                    PlanLimit(plan_id=plan.id, limit_code=lcode, value=lvalue)
-                )
-
-        session.commit()
-    finally:
-        session.close()
-
-# ---------------------------------------------------------------------------
-# Fixtures para tests de availability
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
 # Fixtures para tests de availability
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def resource(db: Session, tenant, unit) -> "Resource":
+def resource(db: Session, tenant, unit) -> Resource:
     """Crea un recurso en el schema del tenant."""
-    from uuid import uuid4 as _uuid4
-    from app.models import Resource
-
-    # Set search_path al schema del tenant
-    db.execute(text(f'SET LOCAL search_path TO "{tenant.schema_name}", public'))
-
-    uid = _uuid4().hex[:6]
+    db.execute(
+        text(f'SET LOCAL search_path TO "{tenant.schema_name}", public')
+    )
+    uid = uuid4().hex[:6]
     r = Resource(
         name=f"Recurso {uid}",
         resource_type="materia_prima",
@@ -711,75 +455,48 @@ def resource(db: Session, tenant, unit) -> "Resource":
     )
     db.add(r)
     db.flush()
-
-    # Restaurar search_path
-    db.execute(text('SET LOCAL search_path TO public'))
     return r
 
 
 @pytest.fixture
-def warehouse(db: Session, tenant) -> "Warehouse":
-    """Crea un warehouse en el schema del tenant."""
-    from uuid import uuid4 as _uuid4
-    from app.models import Warehouse
-
-    db.execute(text(f'SET LOCAL search_path TO "{tenant.schema_name}", public'))
-
-    uid = _uuid4().hex[:6]
-    wh = Warehouse(
-        name=f"Warehouse {uid}",
-        code=f"WH-{uid}",
-        is_active=True,
-    )
-    db.add(wh)
-    db.flush()
-
-    db.execute(text('SET LOCAL search_path TO public'))
-    return wh
-
-
-@pytest.fixture
-def stock_lot(db: Session, tenant, resource, warehouse) -> "StockLot":
+def stock_lot(db: Session, tenant, resource) -> StockLot:
     """Crea un lote de stock de prueba (5 unidades)."""
     from datetime import datetime, timezone
     from decimal import Decimal
-    from uuid import uuid4 as _uuid4
-    from app.models import StockLot
 
-    db.execute(text(f'SET LOCAL search_path TO "{tenant.schema_name}", public'))
-
+    db.execute(
+        text(f'SET LOCAL search_path TO "{tenant.schema_name}", public')
+    )
+    wh = db.query(Warehouse).filter(Warehouse.code == "TEST-WH").first()
+    if not wh:
+        wh = Warehouse(name="Test Warehouse", code="TEST-WH", is_active=True)
+        db.add(wh)
+        db.flush()
     lot = StockLot(
-        warehouse_id=warehouse.id,
+        warehouse_id=wh.id,
         resource_id=resource.id,
-        lot_code=f"LOT-{_uuid4().hex[:6]}",
+        lot_code=f"LOT-{uuid4().hex[:6]}",
         quantity=Decimal("5"),
         received_at=datetime.now(timezone.utc),
     )
     db.add(lot)
     db.flush()
-
-    db.execute(text('SET LOCAL search_path TO public'))
     return lot
 
 
 @pytest.fixture
-def supplier_with_offer(db: Session, tenant, resource) -> "Supplier":
+def supplier_with_offer(db: Session, tenant, resource) -> Supplier:
     """Crea un proveedor con oferta para el recurso."""
     from decimal import Decimal
-    from uuid import uuid4 as _uuid4
-    from app.models import Supplier, SupplierResource
+    from app.models import SupplierResource
 
-    db.execute(text(f'SET LOCAL search_path TO "{tenant.schema_name}", public'))
-
-    uid = _uuid4().hex[:6]
-    s = Supplier(
-        code=f"SUP-{uid}",
-        name=f"Proveedor {uid}",
-        is_active=True,
+    db.execute(
+        text(f'SET LOCAL search_path TO "{tenant.schema_name}", public')
     )
+    uid = uuid4().hex[:6]
+    s = Supplier(code=f"SUP-{uid}", name=f"Proveedor {uid}", is_active=True)
     db.add(s)
     db.flush()
-
     sr = SupplierResource(
         supplier_id=s.id,
         resource_id=resource.id,
@@ -789,32 +506,26 @@ def supplier_with_offer(db: Session, tenant, resource) -> "Supplier":
     )
     db.add(sr)
     db.flush()
-
-    db.execute(text('SET LOCAL search_path TO public'))
     return s
 
 
 @pytest.fixture
-def stock_lot_from_other_tenant(db: Session, tenant_factory) -> "StockLot":
+def stock_lot_from_other_tenant(db: Session, tenant_factory) -> StockLot:
     """Crea un stock_lot en un tenant distinto (para probar aislamiento)."""
     from datetime import datetime, timezone
     from decimal import Decimal
-    from uuid import uuid4 as _uuid4
-    from app.models import Resource, StockLot, Unit, UnitCategory, Warehouse
 
     other_tenant = tenant_factory(name="Other Tenant for Availability")
-
-    # Set search_path al schema del otro tenant
-    db.execute(text(f'SET LOCAL search_path TO "{other_tenant.schema_name}", public'))
-
-    # Crear UnitCategory y Unit
+    db.execute(
+        text(f'SET LOCAL search_path TO "{other_tenant.schema_name}", public')
+    )
     cat = db.query(UnitCategory).filter(UnitCategory.code == "test_peso").first()
     if not cat:
         cat = UnitCategory(code="test_peso", name="Test Peso")
         db.add(cat)
         db.flush()
     u = Unit(
-        code=f"other_kg_{_uuid4().hex[:4]}",
+        code=f"other_kg_{uuid4().hex[:4]}",
         name="Other Kilogramo",
         symbol="okg",
         category_id=cat.id,
@@ -822,10 +533,8 @@ def stock_lot_from_other_tenant(db: Session, tenant_factory) -> "StockLot":
     )
     db.add(u)
     db.flush()
-
-    # Crear Resource
     r = Resource(
-        name=f"Recurso Other {_uuid4().hex[:6]}",
+        name=f"Recurso Other {uuid4().hex[:6]}",
         resource_type="materia_prima",
         base_unit_id=u.id,
         cost=10.0,
@@ -834,26 +543,124 @@ def stock_lot_from_other_tenant(db: Session, tenant_factory) -> "StockLot":
     )
     db.add(r)
     db.flush()
-
-    # Crear Warehouse
     wh = Warehouse(
         name="Other Warehouse",
-        code=f"OWH-{_uuid4().hex[:6]}",
+        code=f"OWH-{uuid4().hex[:6]}",
         is_active=True,
     )
     db.add(wh)
     db.flush()
-
-    # Crear StockLot
     lot = StockLot(
         warehouse_id=wh.id,
         resource_id=r.id,
-        lot_code=f"LOT-O-{_uuid4().hex[:6]}",
+        lot_code=f"LOT-O-{uuid4().hex[:6]}",
         quantity=Decimal("100"),
         received_at=datetime.now(timezone.utc),
     )
     db.add(lot)
     db.flush()
-
-    db.execute(text('SET LOCAL search_path TO public'))
     return lot
+
+
+# ---------------------------------------------------------------------------
+# Seeds mínimos para boe_test
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session", autouse=True)
+def _seed_minimal_data(_setup_database):
+    """Carga datos maestros mínimos en boe_test (una vez por sesión)."""
+    from decimal import Decimal
+    from app.models import Feature
+
+    session = TestingSessionLocal()
+    try:
+        # Timezone Venezuela
+        tz = session.query(Timezone).filter(Timezone.code == "America/Caracas").first()
+        if not tz:
+            tz = Timezone(code="America/Caracas", friendly_name="Venezuela", utc_offset="UTC-4")
+            session.add(tz)
+            session.flush()
+
+        # Currency USD
+        usd = session.query(Currency).filter(Currency.code == "USD").first()
+        if not usd:
+            usd = Currency(code="USD", name="Dólar estadounidense", symbol="$", decimals=2, is_base=True)
+            session.add(usd)
+            session.flush()
+
+        # Country VE
+        ve = session.query(Country).filter(Country.code == "VE").first()
+        if not ve:
+            ve = Country(code="VE", name="Venezuela", timezone_id=tz.id, currency_id=usd.id, phone_prefix="+58")
+            session.add(ve)
+            session.flush()
+
+        # Vertical
+        v = session.query(Vertical).filter(Vertical.code == "clinicas_generales").first()
+        if not v:
+            v = Vertical(code="clinicas_generales", name="Clínicas generales", description="Clínicas médicas generales")
+            session.add(v)
+            session.flush()
+
+        # Permisos (INCLUYENDO inventory:ver_costos)
+        permissions_data = [
+            ("resource", "crear"), ("resource", "ver"), ("resource", "editar"), ("resource", "eliminar"),
+            ("supplier", "crear"), ("supplier", "ver"), ("supplier", "editar"), ("supplier", "eliminar"),
+            ("bundle", "crear"), ("bundle", "ver"), ("bundle", "editar"), ("bundle", "eliminar"),
+            ("purchase_request", "crear"), ("purchase_request", "ver"), ("purchase_request", "editar"), ("purchase_request", "eliminar"), ("purchase_request", "aprobar"),
+            ("supplier_quote", "ver"), ("supplier_quote", "crear"), ("supplier_quote", "editar"), ("supplier_quote", "eliminar"), ("supplier_quote", "seleccionar"),
+            ("warehouse", "crear"), ("warehouse", "ver"), ("warehouse", "editar"), ("warehouse", "eliminar"),
+            ("movement", "crear"), ("movement", "ver"),
+            ("inventory", "ver"), ("inventory", "ver_costos"), ("inventory", "ver_lotes"), ("inventory", "crear"), ("inventory", "editar"), ("inventory", "eliminar"),
+            ("production", "ver"), ("production", "crear"), ("production", "editar"), ("production", "eliminar"),
+            ("tenant", "configurar"), ("tenant", "ver_usuarios"), ("tenant", "gestionar_roles"), ("tenant", "gestionar_permisos"),
+        ]
+        for module, action in permissions_data:
+            existing = session.query(Permission).filter(Permission.module == module, Permission.action == action).first()
+            if not existing:
+                session.add(Permission(module=module, action=action, description=f"{action} {module}"))
+        session.flush()
+
+        # Roles
+        for role_name in ["Admin", "Editor", "Lector", "SuperAdmin"]:
+            existing = session.query(Role).filter(Role.name == role_name).first()
+            if not existing:
+                session.add(Role(name=role_name, description=role_name, is_system=True))
+        session.flush()
+
+        # Features
+        feature_codes = ["inventario", "planificacion", "marketplace", "notificaciones"]
+        features: dict[str, Feature] = {}
+        for code in feature_codes:
+            f = session.query(Feature).filter(Feature.code == code).first()
+            if not f:
+                f = Feature(code=code, name=code.title(), description=f"Feature {code}", applies_to="both")
+                session.add(f)
+                session.flush()
+            features[code] = f
+
+        # Planes
+        plans_data = [
+            {"code": "mpr_base", "name": "MPR Base", "price": Decimal("39.00"), "interval": "monthly", "trial_days": 14, "features": ["inventario", "planificacion", "notificaciones"], "limits": {"recursos": 50, "usuarios": 3, "paquetes": 10}},
+            {"code": "mpr_plus", "name": "MPR Plus", "price": Decimal("79.00"), "interval": "monthly", "trial_days": 14, "features": ["inventario", "planificacion", "marketplace", "notificaciones"], "limits": {"recursos": None, "usuarios": 10, "paquetes": None}},
+            {"code": "mp_gratuito", "name": "Marketplace Gratuito", "price": Decimal("0.00"), "interval": "monthly", "trial_days": 0, "features": ["marketplace", "notificaciones"], "limits": {"productos": 10, "ventas_mes": 3, "leads_mes": 3}},
+            {"code": "mp_basico", "name": "Marketplace Basico", "price": Decimal("19.00"), "interval": "monthly", "trial_days": 0, "features": ["marketplace", "notificaciones"], "limits": {"productos": 100, "ventas_mes": 20, "leads_mes": 10}},
+            {"code": "mp_plus", "name": "Marketplace Plus", "price": Decimal("35.00"), "interval": "monthly", "trial_days": 0, "features": ["marketplace", "notificaciones"], "limits": {"productos": None, "ventas_mes": 40, "leads_mes": 30}},
+        ]
+        for pdata in plans_data:
+            existing = session.query(Plan).filter(Plan.code == pdata["code"]).first()
+            if existing:
+                continue
+            plan = Plan(code=pdata["code"], name=pdata["name"], price=pdata["price"], currency_id=usd.id, interval=pdata["interval"], trial_days=pdata["trial_days"], is_active=True)
+            session.add(plan)
+            session.flush()
+            for fcode in pdata["features"]:
+                feature = features.get(fcode)
+                if feature:
+                    session.add(PlanFeature(plan_id=plan.id, feature_id=feature.id))
+            for lcode, lvalue in pdata["limits"].items():
+                session.add(PlanLimit(plan_id=plan.id, limit_code=lcode, value=lvalue))
+
+        session.commit()
+    finally:
+        session.close()

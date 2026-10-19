@@ -13,7 +13,9 @@ from app.schemas.tenant import (
     TenantListResponse,
     TenantResponse,
     TenantUpdate,
+    TenantSettingsUpdate,
 )
+from app.api.deps import get_current_tenant
 
 router = APIRouter(prefix="/tenants", tags=["tenants"])
 
@@ -138,6 +140,27 @@ def create_tenant(data: TenantCreate, db: Session = Depends(get_db)):
     db.refresh(tenant)
     return TenantResponse.model_validate(tenant)
 
+@router.put("/settings", response_model=TenantResponse)
+def update_settings(
+    data: TenantSettingsUpdate,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Actualiza la configuración del tenant actual.
+
+    - `inventory_costing_method`: 'fifo' | 'lifo'
+    """
+    if data.inventory_costing_method is not None:
+        if data.inventory_costing_method not in ("fifo", "lifo"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Método de costeo inválido. Use 'fifo' o 'lifo'",
+            )
+        current_tenant.inventory_costing_method = data.inventory_costing_method
+
+    db.commit()
+    db.refresh(current_tenant)
+    return TenantResponse.model_validate(current_tenant)
 
 @router.put("/{tenant_id}", response_model=TenantResponse)
 def update_tenant(
@@ -163,3 +186,4 @@ def update_tenant(
     db.commit()
     db.refresh(tenant)
     return TenantResponse.model_validate(tenant)
+

@@ -12,6 +12,7 @@ from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
 
@@ -60,6 +61,10 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
         String(20), nullable=False, default="sin_plan"
     )
 
+    inventory_costing_method: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="fifo", server_default="fifo"
+    )
+    
     # Relaciones
     vertical = relationship("Vertical", back_populates="tenants")
     plan = relationship("Plan", back_populates="tenants")
