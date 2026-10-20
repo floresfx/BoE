@@ -62,7 +62,10 @@ export interface MovementCreate {
 
 export interface StockConsolidated {
   warehouse_id: string
+  warehouse_name?: string 
   resource_id: string
+  resource_name?: string 
+  unit_symbol?: string
   total_quantity: string
   lot_count: number
   nearest_expiration: string | null

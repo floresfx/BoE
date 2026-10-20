@@ -20,7 +20,7 @@ class RegisterRequest(BaseModel):
     tax_id_type: str = Field(default="RIF", max_length=20)
     vertical_id: UUID
     country_code: str = Field(..., min_length=2, max_length=2)
-    base_currency: str = Field(default="USD", max_length=10)
+
 
     # Datos del admin user
     admin_email: EmailStr

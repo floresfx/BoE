@@ -31,7 +31,10 @@ class StockLotListResponse(BaseSchema):
 class StockConsolidated(BaseSchema):
     """Vista consolidada de stock: un recurso en un warehouse."""
     warehouse_id: UUID
+    warehouse_name: str
     resource_id: UUID
+    resource_name: str
+    unit_symbol: str
     total_quantity: Decimal
     lot_count: int
     nearest_expiration: datetime | None

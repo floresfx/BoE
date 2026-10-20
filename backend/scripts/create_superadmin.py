@@ -50,7 +50,6 @@ def create_superadmin() -> None:
                 tax_id_type="OTRO",
                 admin_email=SUPERADMIN_EMAIL,
                 vertical_id=vertical.id,
-                base_currency="USD",
                 timezone="America/Caracas",
                 country="Venezuela",
                 schema_name="",  # se asigna en create_tenant_with_schema

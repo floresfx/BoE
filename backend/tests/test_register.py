@@ -28,7 +28,6 @@ def _register_payload(vertical_id: str, **overrides) -> dict:
         "tax_id_type": "RIF",
         "vertical_id": vertical_id,
         "country_code": "VE",
-        "base_currency": "USD",
         "admin_email": f"admin_{uid}@test.com",
         "admin_password": "password123",
         "admin_first_name": "Admin",

@@ -90,7 +90,6 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         tax_id_type=data.tax_id_type,
         admin_email=data.admin_email,
         vertical_id=data.vertical_id,
-        base_currency=data.base_currency,
         timezone=country.timezone.code if country.timezone else "UTC",
         country=country.name,
         province="",

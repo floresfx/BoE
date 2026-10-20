@@ -137,7 +137,6 @@ def tenant_factory(db: Session):
             tax_id=tax_id or f"TEST-{uid[:12]}",
             tax_id_type="TEST",
             admin_email=f"admin-{uid[:8]}@test.com",
-            base_currency="USD",
             timezone="America/Caracas",
             country="Venezuela",
             schema_name=schema_name,

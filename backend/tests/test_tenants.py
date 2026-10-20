@@ -14,7 +14,6 @@ def test_create_tenant(client: TestClient, vertical: Vertical):
             "tax_id_type": "RIF",
             "admin_email": "admin@clinica.com",
             "vertical_id": str(vertical.id),
-            "base_currency": "USD",
             "timezone": "America/Caracas",
             "country": "Venezuela",
             "province": "Miranda",

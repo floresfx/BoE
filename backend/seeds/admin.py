@@ -40,7 +40,6 @@ def seed_admin(db: Session) -> None:
         tax_id=ADMIN_TAX_ID,
         tax_id_type="RIF",
         admin_email=ADMIN_EMAIL,
-        base_currency="USD",
         timezone="America/Caracas",
         country="Venezuela",
         province="Miranda",

@@ -5,12 +5,9 @@ import { z } from 'zod'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
+import { useFilteredCatalogs } from '../../hooks/useTenantCatalogs'
 import { Select } from '../../components/ui/Select'
-import {
-  useCategories,
-  useSubcategories,
-  useUnits,
-} from '../../hooks/useCatalogs'
+import { useSubcategories } from '../../hooks/useCatalogs'
 import type { Resource } from '../../types/resource'
 import { RESOURCE_TYPES } from '../../types/resource'
 
@@ -59,10 +56,12 @@ export function ResourceForm({
 }: Props) {
   const isEditing = Boolean(resource)
 
-  // Datos maestros
-  const { data: units = [], isLoading: loadingUnits } = useUnits()
-  const { data: categories = [], isLoading: loadingCategories } =
-    useCategories()
+  // --- NUEVO: Usamos el hook que filtra por tenant ---
+  const { 
+    units = [], 
+    categories = [], 
+    isLoading: loadingCatalogs 
+  } = useFilteredCatalogs()
 
   const {
     register,
@@ -129,7 +128,7 @@ export function ResourceForm({
           >
             Cancelar
           </Button>
-          <Button type="submit" form="resource-form" disabled={isLoading}>
+          <Button type="submit" form="resource-form" disabled={isLoading || loadingCatalogs}>
             {isLoading ? 'Guardando...' : 'Guardar'}
           </Button>
         </>
@@ -164,7 +163,7 @@ export function ResourceForm({
             label="Categoría (opcional)"
             {...register('category_id')}
             error={errors.category_id?.message}
-            disabled={loadingCategories}
+            disabled={loadingCatalogs}
           >
             <option value="">— Sin categoría —</option>
             {categories.map((c) => (
@@ -193,7 +192,7 @@ export function ResourceForm({
           label="Unidad base"
           {...register('base_unit_id')}
           error={errors.base_unit_id?.message}
-          disabled={loadingUnits}
+          disabled={loadingCatalogs}
         >
           <option value="">— Selecciona una unidad —</option>
           {units.map((u) => (

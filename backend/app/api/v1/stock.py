@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_tenant
 from app.core.database import get_db
-from app.models import Resource, StockLot, Tenant, Warehouse
+from app.models import Resource, StockLot, Tenant, Warehouse, Unit
 from app.schemas.stock_lot import (
     ExpirationAlert,
     StockConsolidated,
@@ -27,25 +27,43 @@ def stock_consolidated(
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
-    """Stock consolidado por (warehouse, resource)."""
-    query = db.query(
-        StockLot.warehouse_id,
-        StockLot.resource_id,
-        func.sum(StockLot.quantity).label("total_quantity"),
-        func.count(StockLot.id).label("lot_count"),
-        func.min(StockLot.expiration).label("nearest_expiration"),
+    """Stock consolidado por (warehouse, resource) con nombres y unidad."""
+    query = (
+        db.query(
+            StockLot.warehouse_id,
+            Warehouse.name.label("warehouse_name"),
+            StockLot.resource_id,
+            Resource.name.label("resource_name"),
+            Unit.symbol.label("unit_symbol"), # <--- NUEVO: Símbolo de la unidad
+            func.sum(StockLot.quantity).label("total_quantity"),
+            func.count(StockLot.id).label("lot_count"),
+            func.min(StockLot.expiration).label("nearest_expiration"),
+        )
+        .join(Warehouse, StockLot.warehouse_id == Warehouse.id)
+        .join(Resource, StockLot.resource_id == Resource.id)
+        .join(Unit, Resource.base_unit_id == Unit.id) # <--- JOIN con Unit
     )
     if warehouse_id:
         query = query.filter(StockLot.warehouse_id == warehouse_id)
     if resource_id:
         query = query.filter(StockLot.resource_id == resource_id)
-    query = query.group_by(StockLot.warehouse_id, StockLot.resource_id)
+    
+    query = query.group_by(
+        StockLot.warehouse_id, 
+        Warehouse.name, 
+        StockLot.resource_id, 
+        Resource.name,
+        Unit.symbol # <--- Añadir a GROUP BY
+    )
 
     rows = query.all()
     items = [
         StockConsolidated(
             warehouse_id=r.warehouse_id,
+            warehouse_name=r.warehouse_name,
             resource_id=r.resource_id,
+            resource_name=r.resource_name,
+            unit_symbol=r.unit_symbol, # <--- Pasar al schema
             total_quantity=r.total_quantity or Decimal("0"),
             lot_count=r.lot_count,
             nearest_expiration=r.nearest_expiration,

@@ -24,6 +24,7 @@ from app.api.v1 import (
     stock,
     subscription,
     suppliers,
+    tenant_settings,
     tenants,
     users,
     verticals,
@@ -59,3 +60,4 @@ api_router.include_router(purchase_requests.router)
 api_router.include_router(availability.router)
 api_router.include_router(costing.router)
 api_router.include_router(production.router)
+api_router.include_router(tenant_settings.router)

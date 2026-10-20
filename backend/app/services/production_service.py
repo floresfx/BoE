@@ -13,7 +13,10 @@ from app.models import (
     BundleComponent,
     ProductionOrder,
     ProductionPlan,
+    Resource,
+    StockLot,
     Tenant,
+    Warehouse,
 )
 from app.services.inventory_service import register_movement
 
@@ -74,7 +77,7 @@ def complete_production(
     """Completa una orden de producción.
 
     - Consume los materiales del bundle (movimientos `out`).
-    - Agrega el producto terminado (movimiento `in` del bundle).
+    - (Pendiente) Agrega el producto terminado (movimiento `in` del bundle).
     """
     _set_tenant_schema(db, tenant)
 
@@ -91,7 +94,7 @@ def complete_production(
             400, f"No se puede completar una orden en estado {order.status}"
         )
 
-    # Obtener el bundle y sus componentes
+    # 1. Obtener el bundle y sus componentes
     bundle = db.query(Bundle).filter(Bundle.id == order.bundle_id).first()
     if not bundle:
         raise HTTPException(404, "Bundle no encontrado")
@@ -102,9 +105,70 @@ def complete_production(
         .all()
     )
 
-    # TODO: Consumir materiales (crear movimientos `out`) en los warehouses
-    # Por ahora, solo marcamos la orden como completada.
-    # En la próxima iteración, se implementa el consumo real.
+    if not components:
+        raise HTTPException(400, "El bundle no tiene componentes definidos")
+
+    # 2. Obtener el warehouse principal (asumimos que hay al menos uno activo)
+    warehouse = (
+        db.query(Warehouse).filter(Warehouse.is_active == True).first()
+    )
+    if not warehouse:
+        raise HTTPException(
+            400, "No hay un almacén activo para registrar movimientos"
+        )
+
+    # 3. Consumir cada componente
+    for comp in components:
+        qty_needed = comp.quantity * order.quantity
+
+        # Verificar stock disponible en el warehouse
+        total_stock = (
+            db.query(StockLot.quantity)
+            .filter(StockLot.resource_id == comp.resource_id)
+            .filter(StockLot.warehouse_id == warehouse.id)
+            .scalar()
+        ) or Decimal("0")
+
+        if total_stock < qty_needed:
+            raise HTTPException(
+                400,
+                f"Stock insuficiente para el recurso {comp.resource_id}. "
+                f"Necesitas {qty_needed}, tienes {total_stock}",
+            )
+
+        # Registrar movimiento de salida
+        # Nota: register_movement espera lot_code, unit_cost, expiration, etc.
+        # Para 'out', el lote se ignora (se calcula FIFO/LIFO), y unit_cost se calcula solo.
+        register_movement(
+            db=db,
+            warehouse_id=warehouse.id,
+            resource_id=comp.resource_id,
+            lot_code=f"PROD-{order.code}",  # No se usa realmente para 'out'
+            movement_type="out",
+            quantity=qty_needed,
+            unit_cost=None,
+            expiration=None,
+            reference=f"Producción {order.code}",
+            notes=f"Consumo automático al completar orden {order.code}",
+            created_by=None,  # Podrías pasar el user actual si lo tienes
+        )
+
+    # 4. (Pendiente) Ingresar el producto terminado.
+    # TODO: Añadir un campo `output_resource_id` al modelo `Bundle`
+    # y registrar aquí un movimiento `in` con ese recurso y la cantidad de la orden.
+    # register_movement(
+    #     db=db,
+    #     warehouse_id=warehouse.id,
+    #     resource_id=bundle.output_resource_id,
+    #     lot_code=f"LOTE-{order.code}",
+    #     movement_type="in",
+    #     quantity=order.quantity,
+    #     unit_cost=...,
+    #     expiration=None,
+    #     reference=f"Producción {order.code}",
+    #     notes=f"Producto terminado de orden {order.code}",
+    #     created_by=None,
+    # )
 
     order.status = "completed"
     order.end_date = datetime.now(timezone.utc)

@@ -93,13 +93,13 @@ function StockTab() {
 
   const wMap = Object.fromEntries((warehouses?.items ?? []).map((w) => [w.id, w]))
 
-  return (
+    return (
     <table className="w-full text-sm">
       <thead className="bg-slate-50 border-b border-slate-200">
         <tr>
           <th className="text-left px-4 py-3 font-medium text-slate-700">Almacén</th>
-          <th className="text-left px-4 py-3 font-medium text-slate-700">Recurso ID</th>
-          <th className="text-right px-4 py-3 font-medium text-slate-700">Cantidad</th>
+          <th className="text-left px-4 py-3 font-medium text-slate-700">Recurso</th> {/* <--- CAMBIO: de "Recurso ID" a "Recurso" */}
+          <th className="text-right px-4 py-3 font-medium text-slate-700">Cantidad Disponible</th>
           <th className="text-right px-4 py-3 font-medium text-slate-700">Lotes</th>
           <th className="text-left px-4 py-3 font-medium text-slate-700">Próx. caducidad</th>
         </tr>
@@ -107,9 +107,17 @@ function StockTab() {
       <tbody className="divide-y divide-slate-100">
         {data.items.map((s, i) => (
           <tr key={i} className="hover:bg-slate-50">
-            <td className="px-4 py-3">{wMap[s.warehouse_id]?.name ?? s.warehouse_id.slice(0, 8)}</td>
-            <td className="px-4 py-3 font-mono text-xs">{s.resource_id.slice(0, 8)}…</td>
-            <td className="px-4 py-3 text-right font-medium">{s.total_quantity}</td>
+            {/* Usamos warehouse_name que viene del backend, con fallback al ID */}
+            <td className="px-4 py-3">
+              {s.warehouse_name || wMap[s.warehouse_id]?.name || s.warehouse_id.slice(0, 8)}
+            </td>
+            
+            {/* Usamos resource_name que viene del backend, con fallback al ID */}
+            <td className="px-4 py-3 font-medium text-slate-900">
+              {s.resource_name || s.resource_id.slice(0, 8)}… 
+            </td>
+
+            <td className="px-4 py-3 text-right font-medium">{s.total_quantity} {s.unit_symbol}</td>
             <td className="px-4 py-3 text-right">{s.lot_count}</td>
             <td className="px-4 py-3 text-slate-600">
               {s.nearest_expiration

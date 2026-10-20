@@ -38,7 +38,6 @@ from app.models.vertical import Vertical
 from app.models.plan_feature import PlanFeature
 from app.models.plan_limit import PlanLimit
 
-
 # Catalogos simples (Bloque 1)
 from app.models.catalogs import (
     AttributeType,
@@ -78,6 +77,13 @@ from app.models.geo import (
 from app.models.services import (
     ServiceTemplate,
     VerticalService,
+)
+
+# Configuración de Tenant (Fundación)
+from app.models.tenant_settings import (
+    TenantActiveAttribute,
+    TenantActiveCategory,
+    TenantActiveUnit,
 )
 
 __all__ = [
@@ -148,4 +154,7 @@ __all__ = [
     "PRODUCTION_PLAN_STATUSES",
     "ProductionOrder",
     "PRODUCTION_ORDER_STATUSES",
+    "TenantActiveAttribute",
+    "TenantActiveCategory",
+    "TenantActiveUnit",
 ]

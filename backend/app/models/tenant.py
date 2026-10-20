@@ -10,11 +10,15 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
+from app.models.tenant_settings import (
+    TenantActiveAttribute,
+    TenantActiveCategory,
+    TenantActiveUnit,
+)
 
 
 class Tenant(Base, UUIDMixin, TimestampMixin):
@@ -32,9 +36,10 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
     vertical_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("verticals.id"), nullable=True
     )
-    base_currency: Mapped[str] = mapped_column(
-        String(10), nullable=False, default="USD"
-    )
+    
+    # NOTA: base_currency (String) ha sido eliminada porque la columna
+    # fue borrada de la base de datos. Ahora solo usamos base_currency_id.
+    
     timezone: Mapped[str] = mapped_column(
         String(50), nullable=False, default="America/Caracas"
     )
@@ -64,8 +69,24 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
     inventory_costing_method: Mapped[str] = mapped_column(
         String(20), nullable=False, default="fifo", server_default="fifo"
     )
-    
-    # Relaciones
+
+    # --- Nueva columna para la Fundación ---
+    base_currency_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("currencies.id"), nullable=True
+    )
+
+    # --- Nuevas relaciones para la Fundación ---
+    active_units: Mapped[list[TenantActiveUnit]] = relationship(
+        cascade="all, delete-orphan"
+    )
+    active_categories: Mapped[list[TenantActiveCategory]] = relationship(
+        cascade="all, delete-orphan"
+    )
+    active_attributes: Mapped[list[TenantActiveAttribute]] = relationship(
+        cascade="all, delete-orphan"
+    )
+
+    # Relaciones existentes
     vertical = relationship("Vertical", back_populates="tenants")
     plan = relationship("Plan", back_populates="tenants")
     users = relationship("User", back_populates="tenant")

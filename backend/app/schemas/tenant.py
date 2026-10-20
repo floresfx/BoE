@@ -15,7 +15,6 @@ class TenantBase(BaseModel):
     tax_id: str = Field(..., min_length=1, max_length=50)
     tax_id_type: str = Field(..., min_length=1, max_length=20)
     admin_email: EmailStr
-    base_currency: str = Field(default="USD", max_length=10)
     timezone: str = Field(default="America/Caracas", max_length=50)
     country: str = Field(..., min_length=1, max_length=100)
     province: str | None = Field(default=None, max_length=100)
@@ -34,7 +33,6 @@ class TenantUpdate(BaseModel):
     tax_id: str | None = Field(default=None, min_length=1, max_length=50)
     tax_id_type: str | None = Field(default=None, min_length=1, max_length=20)
     admin_email: EmailStr | None = None
-    base_currency: str | None = Field(default=None, max_length=10)
     timezone: str | None = Field(default=None, max_length=50)
     country: str | None = Field(default=None, min_length=1, max_length=100)
     province: str | None = Field(default=None, max_length=100)

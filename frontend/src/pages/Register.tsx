@@ -71,7 +71,6 @@ export function Register() {
       tax_id_type: 'RIF',
       vertical_id: '',
       country_code: 'VE',
-      base_currency: 'USD',
       admin_email: '',
       admin_password: '',
       admin_first_name: '',
