@@ -21,6 +21,7 @@ from app.api.v1 import (
     resources,
     resource_attributes,
     resource_taxes,
+    reports,
     roles,
     secure_devices,
     stock,
@@ -67,3 +68,4 @@ api_router.include_router(tenant_settings.router)
 api_router.include_router(agenda.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(stock_reservations.router)
+api_router.include_router(reports.router)

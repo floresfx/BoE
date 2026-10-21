@@ -13,6 +13,7 @@ import {
 import { MovementModal } from './MovementModal'
 import { WarehouseForm } from './WarehouseForm'
 import { ReservationModal } from './ReservationModal'
+import { useDownloadReport } from '../../hooks/useReports'
 
 
 type Tab = 'stock' | 'warehouses' | 'alerts' | 'reservations'
@@ -22,6 +23,7 @@ export function Inventory() {
   const [movementOpen, setMovementOpen] = useState(false)
   const [warehouseFormOpen, setWarehouseFormOpen] = useState(false)
   const [reservationOpen, setReservationOpen] = useState(false)
+  const { downloadExcel, downloadPdf } = useDownloadReport()
 
   return (
     <div className="space-y-6">
@@ -39,14 +41,14 @@ export function Inventory() {
           <Button onClick={() => setMovementOpen(true)}>
             + Movimiento
           </Button>
-          <Button onClick={() => setWarehouseFormOpen(true)} variant="secondary">
-            + Almacén
-          </Button>
-          <Button onClick={() => setReservationOpen(true)} variant="secondary"> {/* <--- AÑADIR ESTO */}
+          <Button onClick={() => setReservationOpen(true)} variant="secondary">
             + Reserva
           </Button>
-          <Button onClick={() => setMovementOpen(true)}>
-            + Movimiento
+          <Button onClick={downloadExcel} variant="secondary">
+            Exportar Excel
+          </Button>
+          <Button onClick={downloadPdf} variant="secondary">
+            Exportar PDF
           </Button>
         </div>
       </div>
@@ -89,26 +91,9 @@ export function Inventory() {
         open={warehouseFormOpen}
         onClose={() => setWarehouseFormOpen(false)}
       />
-
-      <MovementModal
-        open={movementOpen}
-        onClose={() => setMovementOpen(false)}
-      />
-      <WarehouseForm
-        open={warehouseFormOpen}
-        onClose={() => setWarehouseFormOpen(false)}
-      />
       <ReservationModal
         open={reservationOpen}
         onClose={() => setReservationOpen(false)}
-      />
-      <MovementModal
-        open={movementOpen}
-        onClose={() => setMovementOpen(false)}
-      />
-      <WarehouseForm
-        open={warehouseFormOpen}
-        onClose={() => setWarehouseFormOpen(false)}
       />
     </div>
   )
