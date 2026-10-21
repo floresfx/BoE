@@ -164,3 +164,44 @@ def list_currencies(db: Session = Depends(get_db)):
         }
         for c in currencies
     ]
+
+from app.models import DateFormat, NumberFormat  # <--- Añadir a las importaciones
+
+# ... (al final del archivo, junto a los demás)
+
+@router.get("/date-formats")
+def list_date_formats(db: Session = Depends(get_db)):
+    """Lista todos los formatos de fecha activos."""
+    formats = (
+        db.query(DateFormat)
+        .filter(DateFormat.is_active.is_(True))
+        .order_by(DateFormat.code)
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "code": f.code,
+            "example": f.example,
+        }
+        for f in formats
+    ]
+
+
+@router.get("/number-formats")
+def list_number_formats(db: Session = Depends(get_db)):
+    """Lista todos los formatos de número activos."""
+    formats = (
+        db.query(NumberFormat)
+        .filter(NumberFormat.is_active.is_(True))
+        .order_by(NumberFormat.code)
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "code": f.code,
+            "example": f.example,
+        }
+        for f in formats
+    ]

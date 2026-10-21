@@ -296,6 +296,24 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
             UNIQUE (code)
         )
     """))
+
+        # Stock Reservations
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."stock_reservations" (
+            id UUID PRIMARY KEY,
+            warehouse_id UUID NOT NULL REFERENCES "{schema_name}".warehouses(id) ON DELETE CASCADE,
+            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id) ON DELETE CASCADE,
+            quantity NUMERIC(14, 4) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            reference VARCHAR(100),
+            notes VARCHAR(255),
+            needed_by TIMESTAMPTZ,
+            created_by UUID,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+    
     # Índices con nombres únicos (no chocan con purchase_orders)
     db.execute(text(f"""
         CREATE INDEX IF NOT EXISTS ix_prod_order_status

@@ -5,6 +5,9 @@ import {
   useCatalogAttributes,
   useCatalogCategories,
   useCatalogCurrencies,
+  useCatalogDateFormats,
+  useCatalogNumberFormats,
+  useCatalogTaxes,
   useCatalogUnits,
   useTenantSettings,
   useUpdateTenantSettings,
@@ -18,24 +21,33 @@ export function Settings() {
   const { data: units } = useCatalogUnits()
   const { data: categories } = useCatalogCategories()
   const { data: attributes } = useCatalogAttributes()
+  const { data: dateFormats } = useCatalogDateFormats()
+  const { data: numberFormats } = useCatalogNumberFormats()
+  const { data: taxes } = useCatalogTaxes()
   
   const updateMutation = useUpdateTenantSettings()
 
   // 2. Estados locales
   const [method, setMethod] = useState<CostingMethod>('fifo')
   const [baseCurrencyId, setBaseCurrencyId] = useState<string>('')
+  const [dateFormatId, setDateFormatId] = useState<string>('')
+  const [numberFormatId, setNumberFormatId] = useState<string>('')
   const [selectedUnits, setSelectedUnits] = useState<string[]>([])
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([])
+  const [selectedTaxes, setSelectedTaxes] = useState<string[]>([])
 
   // 3. Sincronizar estado cuando llegan los datos
   useEffect(() => {
     if (settings) {
       setMethod(settings.inventory_costing_method)
       setBaseCurrencyId(settings.base_currency_id || '')
+      setDateFormatId(settings.date_format_id || '') 
+      setNumberFormatId(settings.number_format_id || '')
       setSelectedUnits(settings.active_unit_ids || [])
       setSelectedCategories(settings.active_category_ids || [])
       setSelectedAttributes(settings.active_attribute_ids || [])
+      setSelectedTaxes(settings.active_tax_ids || [])
     }
   }, [settings])
 
@@ -45,9 +57,12 @@ export function Settings() {
       await updateMutation.mutateAsync({
         inventory_costing_method: method,
         base_currency_id: baseCurrencyId || null,
+        date_format_id: dateFormatId || null,
+        number_format_id: numberFormatId || null,
         active_unit_ids: selectedUnits,
         active_category_ids: selectedCategories,
         active_attribute_ids: selectedAttributes,
+        active_tax_ids: selectedTaxes,
       })
       alert('Configuración guardada correctamente.')
     } catch (err) {
@@ -175,6 +190,51 @@ export function Settings() {
                 className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
               <span className="text-sm text-slate-700">{attr.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow space-y-4">
+        <h2 className="text-lg font-semibold text-slate-900">Formatos</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Formato de Fecha</label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm border p-2"
+              value={dateFormatId}
+              onChange={(e) => setDateFormatId(e.target.value)}
+            >
+              <option value="">Predeterminado</option>
+              {dateFormats?.map((f: any) => (
+                <option key={f.id} value={f.id}>{f.code} - {f.example}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Formato de Número</label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm border p-2"
+              value={numberFormatId}
+              onChange={(e) => setNumberFormatId(e.target.value)}
+            >
+              <option value="">Predeterminado</option>
+              {numberFormats?.map((f: any) => (
+                <option key={f.id} value={f.id}>{f.code} - {f.example}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* 8. Impuestos (NUEVO) */}
+      <div className="bg-white p-6 rounded-lg shadow space-y-4">
+        <h2 className="text-lg font-semibold text-slate-900">Impuestos</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {taxes?.map((tax: any) => (
+            <label key={tax.id} className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={selectedTaxes.includes(tax.id)} onChange={() => toggleSelection(tax.id, selectedTaxes, setSelectedTaxes)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+              <span className="text-sm text-slate-700">{tax.name} ({tax.rate}%)</span>
             </label>
           ))}
         </div>

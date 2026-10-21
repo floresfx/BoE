@@ -83,7 +83,13 @@ from app.models.services import (
 from app.models.tenant_settings import (
     TenantActiveAttribute,
     TenantActiveCategory,
+    TenantActiveTax,
     TenantActiveUnit,
+)
+
+from app.models.operational.stock_reservation import (
+    StockReservation,
+    RESERVATION_STATUSES,
 )
 
 __all__ = [
@@ -147,6 +153,7 @@ __all__ = [
     "PurchaseRequestLine",
     "PURCHASE_REQUEST_STATUSES",
     "SupplierQuote",
+    "StockReservation",
     "PurchaseOrder",
     "PurchaseOrderLine",
     "PURCHASE_ORDER_STATUSES",
@@ -154,7 +161,9 @@ __all__ = [
     "PRODUCTION_PLAN_STATUSES",
     "ProductionOrder",
     "PRODUCTION_ORDER_STATUSES",
+    "RESERVATION_STATUSES",
     "TenantActiveAttribute",
     "TenantActiveCategory",
+    "TenantActiveTax",
     "TenantActiveUnit",
 ]

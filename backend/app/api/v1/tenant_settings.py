@@ -1,4 +1,5 @@
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -8,8 +9,15 @@ from app.models import (
     Tenant,
     TenantActiveAttribute,
     TenantActiveCategory,
+    TenantActiveTax,
     TenantActiveUnit,
-    Unit, Category, Attribute, Currency
+    Attribute,
+    Category,
+    Currency,
+    DateFormat,
+    NumberFormat,
+    Tax,
+    Unit,
 )
 from app.schemas.tenant_settings import (
     TenantSettingsResponse,
@@ -23,13 +31,17 @@ def _get_settings_for_tenant(db: Session, tenant: Tenant) -> TenantSettingsRespo
     active_units = [au.unit_id for au in tenant.active_units]
     active_categories = [ac.category_id for ac in tenant.active_categories]
     active_attributes = [aa.attribute_id for aa in tenant.active_attributes]
+    active_taxes = [at.tax_id for at in tenant.active_taxes]
 
     return TenantSettingsResponse(
         base_currency_id=tenant.base_currency_id,
         inventory_costing_method=tenant.inventory_costing_method,
+        date_format_id=tenant.date_format_id,
+        number_format_id=tenant.number_format_id,
         active_unit_ids=active_units,
         active_category_ids=active_categories,
         active_attribute_ids=active_attributes,
+        active_tax_ids=active_taxes,
     )
 
 
@@ -62,11 +74,22 @@ def update_tenant_settings(
             raise HTTPException(status_code=404, detail="Moneda no encontrada.")
         current_tenant.base_currency_id = data.base_currency_id
 
+    if data.date_format_id is not None:
+        fmt = db.query(DateFormat).filter(DateFormat.id == data.date_format_id).first()
+        if not fmt:
+            raise HTTPException(status_code=404, detail="Formato de fecha no encontrado.")
+        current_tenant.date_format_id = data.date_format_id
+
+    if data.number_format_id is not None:
+        fmt = db.query(NumberFormat).filter(NumberFormat.id == data.number_format_id).first()
+        if not fmt:
+            raise HTTPException(status_code=404, detail="Formato de número no encontrado.")
+        current_tenant.number_format_id = data.number_format_id
+
     # 2. Sincronizar unidades activas
     if data.active_unit_ids is not None:
         db.query(TenantActiveUnit).filter(TenantActiveUnit.tenant_id == current_tenant.id).delete()
         for unit_id in data.active_unit_ids:
-            # Opcional: validar que la unidad existe
             db.add(TenantActiveUnit(tenant_id=current_tenant.id, unit_id=unit_id))
 
     # 3. Sincronizar categorías activas
@@ -80,6 +103,12 @@ def update_tenant_settings(
         db.query(TenantActiveAttribute).filter(TenantActiveAttribute.tenant_id == current_tenant.id).delete()
         for attr_id in data.active_attribute_ids:
             db.add(TenantActiveAttribute(tenant_id=current_tenant.id, attribute_id=attr_id))
+
+    # 5. Sincronizar impuestos activos
+    if data.active_tax_ids is not None:
+        db.query(TenantActiveTax).filter(TenantActiveTax.tenant_id == current_tenant.id).delete()
+        for tax_id in data.active_tax_ids:
+            db.add(TenantActiveTax(tenant_id=current_tenant.id, tax_id=tax_id))
 
     db.flush()
     db.refresh(current_tenant)

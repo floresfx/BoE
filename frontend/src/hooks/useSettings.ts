@@ -75,3 +75,33 @@ export function useCatalogAttributes() {
     },
   })
 }
+
+export function useCatalogDateFormats() {
+  return useQuery({
+    queryKey: ['catalogs', 'date_formats'],
+    queryFn: async () => {
+      const { data } = await api.get<any[]>('/catalogs/date-formats')
+      return data
+    },
+  })
+}
+
+export function useCatalogNumberFormats() {
+  return useQuery({
+    queryKey: ['catalogs', 'number_formats'],
+    queryFn: async () => {
+      const { data } = await api.get<any[]>('/catalogs/number-formats')
+      return data
+    },
+  })
+}
+
+export function useCatalogTaxes() {
+  return useQuery({
+    queryKey: ['catalogs', 'taxes'],
+    queryFn: async () => {
+      const { data } = await api.get<any[]>('/catalogs/taxes')
+      return data
+    },
+  })
+}

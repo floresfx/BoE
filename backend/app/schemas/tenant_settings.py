@@ -13,6 +13,9 @@ class TenantSettingsUpdate(BaseModel):
     active_unit_ids: list[UUID] | None = None
     active_category_ids: list[UUID] | None = None
     active_attribute_ids: list[UUID] | None = None
+    date_format_id: UUID | None = None
+    number_format_id: UUID | None = None
+    active_tax_ids: list[UUID] | None = None
 
 
 class TenantSettingsResponse(BaseModel):
@@ -20,8 +23,11 @@ class TenantSettingsResponse(BaseModel):
 
     base_currency_id: UUID | None
     inventory_costing_method: str
+    date_format_id: UUID | None
+    number_format_id: UUID | None
     active_unit_ids: list[UUID]
     active_category_ids: list[UUID]
     active_attribute_ids: list[UUID]
+    active_tax_ids: list[UUID]
 
     model_config = {"from_attributes": True}

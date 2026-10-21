@@ -4,11 +4,13 @@ from fastapi import APIRouter
 from app.api.v1 import (
     access_logs,
     admin,
+    agenda,
     auth,
     availability,
     bundles,
     catalogs,
     costing,
+    dashboard,
     production,
     movements,
     permissions,
@@ -22,6 +24,7 @@ from app.api.v1 import (
     roles,
     secure_devices,
     stock,
+    stock_reservations,
     subscription,
     suppliers,
     tenant_settings,
@@ -61,3 +64,6 @@ api_router.include_router(availability.router)
 api_router.include_router(costing.router)
 api_router.include_router(production.router)
 api_router.include_router(tenant_settings.router)
+api_router.include_router(agenda.router)
+api_router.include_router(dashboard.router)
+api_router.include_router(stock_reservations.router)

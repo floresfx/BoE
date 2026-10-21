@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from app.core.error_handler import integrity_error_handler, sqlalchemy_error_handler
 
 from app.api.v1 import api_router
 from app.core.config import settings
@@ -10,6 +12,9 @@ app = FastAPI(
     description="Plataforma de planificación y suministro",
     debug=settings.DEBUG,
 )
+
+app.add_exception_handler(IntegrityError, integrity_error_handler)  # <--- NUEVO
+app.add_exception_handler(SQLAlchemyError, sqlalchemy_error_handler)  # <--- NUEVO
 
 app.add_middleware(
     CORSMiddleware,

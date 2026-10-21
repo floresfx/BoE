@@ -18,6 +18,7 @@ from app.models.tenant_settings import (
     TenantActiveAttribute,
     TenantActiveCategory,
     TenantActiveUnit,
+    TenantActiveTax,
 )
 
 
@@ -46,6 +47,9 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
     country: Mapped[str] = mapped_column(String(100), nullable=False)
     province: Mapped[str | None] = mapped_column(String(100), nullable=True)
     city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    date_format_id: Mapped[UUID | None] = mapped_column(ForeignKey("date_formats.id"), nullable=True)
+    number_format_id: Mapped[UUID | None] = mapped_column(ForeignKey("number_formats.id"), nullable=True)
 
     # Schema y estado
     schema_name: Mapped[str] = mapped_column(
@@ -83,6 +87,20 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
         cascade="all, delete-orphan"
     )
     active_attributes: Mapped[list[TenantActiveAttribute]] = relationship(
+        cascade="all, delete-orphan"
+    )
+
+    # --- Nuevas relaciones para la Fundación ---
+    active_units: Mapped[list[TenantActiveUnit]] = relationship(
+        cascade="all, delete-orphan"
+    )
+    active_categories: Mapped[list[TenantActiveCategory]] = relationship(
+        cascade="all, delete-orphan"
+    )
+    active_attributes: Mapped[list[TenantActiveAttribute]] = relationship(
+        cascade="all, delete-orphan"
+    )
+    active_taxes: Mapped[list["TenantActiveTax"]] = relationship(  # <--- AÑADIR ESTA LÍNEA
         cascade="all, delete-orphan"
     )
 

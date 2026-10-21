@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/layout/Layout'
 import { Login } from './pages/Login'
@@ -19,6 +19,8 @@ import { NewPurchaseRequest } from './pages/purchase_requests/NewPurchaseRequest
 import { CostingReport } from './pages/inventory/CostingReport'
 import { Settings } from './pages/Settings'
 import { ProductionKanban } from './pages/production/ProductionKanban'
+import { CalendarPage } from './pages/CalendarPage'
+import { Dashboard } from './pages/Dashboard' // <--- IMPORTANTE: Importar Dashboard
 
 
 export function App() {
@@ -47,10 +49,19 @@ export function App() {
           </ProtectedRoute>
         }
       >
+        {/* Redirección por defecto: si entras a "/", te manda a "/dashboard" */}
+        <Route index element={<Navigate to="/dashboard" replace />} />
+
+        {/* Rutas Hijas */}
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="resources" element={<ResourcesList />} />
         <Route path="catalogs" element={<Catalogs />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="admin" element={<Admin />} />
+        
+        {/* Nota: Se ha quitado la barra "/" al inicio de "calendar" para que sea relativa al Layout */}
+        <Route path="calendar" element={<CalendarPage />} /> 
+        
         <Route path="suppliers" element={<SuppliersList />} />
         <Route path="bundles" element={<BundlesList />} />
         <Route path="bundles/:bundleId/cost" element={<BundleCost />} />

@@ -6,15 +6,22 @@ import {
   useStockConsolidated,
   useWarehouses,
 } from '../../hooks/useInventory'
+import {
+  useStockReservations,
+  useCancelStockReservation,
+} from '../../hooks/useStockReservations'
 import { MovementModal } from './MovementModal'
 import { WarehouseForm } from './WarehouseForm'
+import { ReservationModal } from './ReservationModal'
 
-type Tab = 'stock' | 'warehouses' | 'alerts'
+
+type Tab = 'stock' | 'warehouses' | 'alerts' | 'reservations'
 
 export function Inventory() {
   const [activeTab, setActiveTab] = useState<Tab>('stock')
   const [movementOpen, setMovementOpen] = useState(false)
   const [warehouseFormOpen, setWarehouseFormOpen] = useState(false)
+  const [reservationOpen, setReservationOpen] = useState(false)
 
   return (
     <div className="space-y-6">
@@ -22,12 +29,21 @@ export function Inventory() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Inventario</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Stock, almacenes y movimientos.
+            Stock, almacenes, movimientos y reservas.
           </p>
         </div>
         <div className="space-x-2">
           <Button onClick={() => setWarehouseFormOpen(true)} variant="secondary">
             + Almacén
+          </Button>
+          <Button onClick={() => setMovementOpen(true)}>
+            + Movimiento
+          </Button>
+          <Button onClick={() => setWarehouseFormOpen(true)} variant="secondary">
+            + Almacén
+          </Button>
+          <Button onClick={() => setReservationOpen(true)} variant="secondary"> {/* <--- AÑADIR ESTO */}
+            + Reserva
           </Button>
           <Button onClick={() => setMovementOpen(true)}>
             + Movimiento
@@ -41,6 +57,7 @@ export function Inventory() {
             { id: 'stock' as Tab, label: 'Stock consolidado' },
             { id: 'warehouses' as Tab, label: 'Almacenes' },
             { id: 'alerts' as Tab, label: 'Alertas de caducidad' },
+            { id: 'reservations' as Tab, label: 'Reservas' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -61,8 +78,30 @@ export function Inventory() {
         {activeTab === 'stock' && <StockTab />}
         {activeTab === 'warehouses' && <WarehousesTab />}
         {activeTab === 'alerts' && <AlertsTab />}
+        {activeTab === 'reservations' && <ReservationsTab />}
       </div>
 
+      <MovementModal
+        open={movementOpen}
+        onClose={() => setMovementOpen(false)}
+      />
+      <WarehouseForm
+        open={warehouseFormOpen}
+        onClose={() => setWarehouseFormOpen(false)}
+      />
+
+      <MovementModal
+        open={movementOpen}
+        onClose={() => setMovementOpen(false)}
+      />
+      <WarehouseForm
+        open={warehouseFormOpen}
+        onClose={() => setWarehouseFormOpen(false)}
+      />
+      <ReservationModal
+        open={reservationOpen}
+        onClose={() => setReservationOpen(false)}
+      />
       <MovementModal
         open={movementOpen}
         onClose={() => setMovementOpen(false)}
@@ -93,12 +132,12 @@ function StockTab() {
 
   const wMap = Object.fromEntries((warehouses?.items ?? []).map((w) => [w.id, w]))
 
-    return (
+  return (
     <table className="w-full text-sm">
       <thead className="bg-slate-50 border-b border-slate-200">
         <tr>
           <th className="text-left px-4 py-3 font-medium text-slate-700">Almacén</th>
-          <th className="text-left px-4 py-3 font-medium text-slate-700">Recurso</th> {/* <--- CAMBIO: de "Recurso ID" a "Recurso" */}
+          <th className="text-left px-4 py-3 font-medium text-slate-700">Recurso</th>
           <th className="text-right px-4 py-3 font-medium text-slate-700">Cantidad Disponible</th>
           <th className="text-right px-4 py-3 font-medium text-slate-700">Lotes</th>
           <th className="text-left px-4 py-3 font-medium text-slate-700">Próx. caducidad</th>
@@ -107,16 +146,12 @@ function StockTab() {
       <tbody className="divide-y divide-slate-100">
         {data.items.map((s, i) => (
           <tr key={i} className="hover:bg-slate-50">
-            {/* Usamos warehouse_name que viene del backend, con fallback al ID */}
             <td className="px-4 py-3">
               {s.warehouse_name || wMap[s.warehouse_id]?.name || s.warehouse_id.slice(0, 8)}
             </td>
-            
-            {/* Usamos resource_name que viene del backend, con fallback al ID */}
             <td className="px-4 py-3 font-medium text-slate-900">
-              {s.resource_name || s.resource_id.slice(0, 8)}… 
+              {s.resource_name || s.resource_id.slice(0, 8)}…
             </td>
-
             <td className="px-4 py-3 text-right font-medium">{s.total_quantity} {s.unit_symbol}</td>
             <td className="px-4 py-3 text-right">{s.lot_count}</td>
             <td className="px-4 py-3 text-slate-600">
@@ -224,3 +259,72 @@ function AlertsTab() {
     </table>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Reservas de Stock
+// ---------------------------------------------------------------------------
+
+function ReservationsTab() {
+  const { data, isLoading } = useStockReservations()
+  const cancelMutation = useCancelStockReservation()
+
+  if (isLoading) return <div className="p-8 text-center text-slate-500">Cargando...</div>
+  if (!data?.items.length) {
+    return (
+      <div className="p-8 text-center text-slate-500">
+        No hay reservas. Crea una reserva para apartar stock para un pedido futuro.
+      </div>
+    )
+  }
+
+  return (
+    <table className="w-full text-sm">
+      <thead className="bg-slate-50 border-b border-slate-200">
+        <tr>
+          <th className="text-left px-4 py-3 font-medium text-slate-700">Referencia</th>
+          <th className="text-left px-4 py-3 font-medium text-slate-700">Recurso ID</th>
+          <th className="text-right px-4 py-3 font-medium text-slate-700">Cantidad</th>
+          <th className="text-left px-4 py-3 font-medium text-slate-700">Estado</th>
+          <th className="text-left px-4 py-3 font-medium text-slate-700">Necesario para</th>
+          <th className="text-right px-4 py-3 font-medium text-slate-700">Acciones</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100">
+        {data.items.map((r) => (
+          <tr key={r.id} className="hover:bg-slate-50">
+            <td className="px-4 py-3">{r.reference || '—'}</td>
+            <td className="px-4 py-3 font-mono text-xs">{r.resource_id.slice(0, 8)}…</td>
+            <td className="px-4 py-3 text-right">{r.quantity}</td>
+            <td className="px-4 py-3">
+              {r.status === 'pending' ? (
+                <Badge variant="yellow">Pendiente</Badge>
+              ) : r.status === 'confirmed' ? (
+                <Badge variant="blue">Confirmada</Badge>
+              ) : r.status === 'fulfilled' ? (
+                <Badge variant="green">Cumplida</Badge>
+              ) : (
+                <Badge variant="gray">Cancelada</Badge>
+              )}
+            </td>
+            <td className="px-4 py-3">
+              {r.needed_by ? new Date(r.needed_by).toLocaleDateString('es-ES') : '—'}
+            </td>
+            <td className="px-4 py-3 text-right">
+              {r.status === 'pending' && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => cancelMutation.mutate(r.id)}
+                  disabled={cancelMutation.isPending}
+                >
+                  Cancelar
+                </Button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+

@@ -3,12 +3,14 @@ import { Button } from '../components/ui/Button'
 import { useAuth } from '../hooks/useAuth'
 import { useCurrentSubscription } from '../hooks/useSubscription'
 import { useResources } from '../hooks/useResources'
+import { useDashboardSummary } from '../hooks/useDashboard' // <--- NUEVO
 import { Link } from 'react-router-dom'
 
 export function Dashboard() {
   const { user } = useAuth()
   const { data: sub, isLoading: loadingSub } = useCurrentSubscription()
   const { data: resourcesData } = useResources({ limit: 1 })
+  const { data: summary, isLoading: loadingSummary } = useDashboardSummary() // <--- NUEVO
 
   return (
     <div className="space-y-6">
@@ -41,73 +43,139 @@ export function Dashboard() {
         </div>
 
         {sub?.status === 'sin_plan' && (
-        <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded">
-          <div>
-            <p className="font-medium text-yellow-900">
-              No tienes un plan activo
-            </p>
-            <p className="text-sm text-yellow-700 mt-1">
-              Selecciona un plan para comenzar a usar el sistema.
-            </p>
-          </div>
-          <Link to="/select-plan">
-            <Button>Elegir plan</Button>
-          </Link>
-        </div>
-      )}
-
-      {sub?.status === 'trial' && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <p className="font-medium text-blue-900">
-                Estás en período de prueba ({sub.plan_name})
+          <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded">
+            <div>
+              <p className="font-medium text-yellow-900">
+                No tienes un plan activo
               </p>
-              <p className="text-sm text-blue-700 mt-1">
-                Te quedan <strong>{sub.days_remaining} días</strong> de prueba.
-                {sub.trial_ends_at && (
-                  <>
-                    {' '}
-                    Termina el{' '}
-                    {new Date(sub.trial_ends_at).toLocaleDateString('es-ES')}.
-                  </>
-                )}
+              <p className="text-sm text-yellow-700 mt-1">
+                Selecciona un plan para comenzar a usar el sistema.
               </p>
             </div>
-            <Link to="/select-plan?mode=change">
-              <Button size="sm" variant="secondary">
-                Cambiar plan
-              </Button>
+            <Link to="/select-plan">
+              <Button>Elegir plan</Button>
             </Link>
           </div>
-        </div>
-      )}
+        )}
 
-      {sub?.status === 'activo' && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <p className="font-medium text-green-900">
-                Plan {sub.plan_name} activo
-              </p>
-              <p className="text-sm text-green-700 mt-1">
-                Tu suscripción está al día.
-              </p>
+        {sub?.status === 'trial' && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-medium text-blue-900">
+                  Estás en período de prueba ({sub.plan_name})
+                </p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Te quedan <strong>{sub.days_remaining} días</strong> de prueba.
+                  {sub.trial_ends_at && (
+                    <>
+                      {' '}
+                      Termina el{' '}
+                      {new Date(sub.trial_ends_at).toLocaleDateString('es-ES')}.
+                    </>
+                  )}
+                </p>
+              </div>
+              <Link to="/select-plan?mode=change">
+                <Button size="sm" variant="secondary">
+                  Cambiar plan
+                </Button>
+              </Link>
             </div>
-            <Link to="/select-plan?mode=change">
-              <Button size="sm" variant="secondary">
-                Cambiar plan
-              </Button>
-            </Link>
           </div>
-        </div>
-      )}
+        )}
+
+        {sub?.status === 'activo' && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-medium text-green-900">
+                  Plan {sub.plan_name} activo
+                </p>
+                <p className="text-sm text-green-700 mt-1">
+                  Tu suscripción está al día.
+                </p>
+              </div>
+              <Link to="/select-plan?mode=change">
+                <Button size="sm" variant="secondary">
+                  Cambiar plan
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Resumen rápido */}
+      {/* --- NUEVO: KPIs del Dashboard --- */}
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+          Resumen de Operaciones
+        </h2>
+        {loadingSummary ? (
+          <div className="text-sm text-slate-500">Cargando KPIs...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Tarjeta 1: Recursos Activos */}
+            <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+              <p className="text-sm font-medium text-slate-500">Recursos Activos</p>
+              <p className="text-3xl font-bold text-slate-900 mt-2">
+                {summary?.total_resources ?? 0}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Materiales y servicios registrados</p>
+            </div>
+
+            {/* Tarjeta 2: Valor del Inventario */}
+            <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+              <p className="text-sm font-medium text-slate-500">Valor del Inventario</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">
+                ${Number(summary?.total_inventory_value ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Suma de (cantidad × costo)</p>
+            </div>
+
+            {/* Tarjeta 3: Items en Stock */}
+            <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+              <p className="text-sm font-medium text-slate-500">Items en Stock</p>
+              <p className="text-3xl font-bold text-indigo-600 mt-2">
+                {Number(summary?.total_stock_items ?? 0).toLocaleString('es-ES')}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Suma total de cantidades</p>
+            </div>
+
+            {/* Tarjeta 4: Órdenes de Producción */}
+            <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+              <p className="text-sm font-medium text-slate-500">Órdenes de Producción</p>
+              <p className="text-3xl font-bold text-orange-600 mt-2">
+                {summary?.pending_production_orders ?? 0}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Pendientes (draft o en progreso)</p>
+            </div>
+
+            {/* Tarjeta 5: Solicitudes de Compra */}
+            <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+              <p className="text-sm font-medium text-slate-500">Solicitudes de Compra</p>
+              <p className="text-3xl font-bold text-purple-600 mt-2">
+                {summary?.pending_purchase_requests ?? 0}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Pendientes (draft o enviadas)</p>
+            </div>
+
+            {/* Tarjeta 6: Alertas de Caducidad */}
+            <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+              <p className="text-sm font-medium text-slate-500">Alertas de Caducidad</p>
+              <p className="text-3xl font-bold text-red-600 mt-2">
+                {summary?.expiring_soon_alerts ?? 0}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Lotes que vencen en 30 días</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Resumen rápido (el que ya tenías) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-slate-500">Recursos</p>
+          <p className="text-sm text-slate-500">Recursos (total)</p>
           <p className="text-2xl font-bold text-slate-900 mt-1">
             {resourcesData?.total ?? '—'}
           </p>

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
 from app.models.catalogs import Attribute, Category, Unit
+from app.models.geo import Tax
 
 
 class TenantActiveUnit(Base, UUIDMixin, TimestampMixin):
@@ -38,3 +39,13 @@ class TenantActiveAttribute(Base, UUIDMixin, TimestampMixin):
     attribute_id: Mapped[UUID] = mapped_column(ForeignKey("attributes.id"), nullable=False)
 
     attribute: Mapped[Attribute] = relationship()
+
+class TenantActiveTax(Base, UUIDMixin, TimestampMixin):
+    """Impuestos activados por un tenant."""
+    __tablename__ = "tenant_active_taxes"
+    __table_args__ = (UniqueConstraint("tenant_id", "tax_id", name="uq_tenant_tax"),)
+
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    tax_id: Mapped[UUID] = mapped_column(ForeignKey("taxes.id"), nullable=False)
+
+    tax: Mapped[Tax] = relationship()
