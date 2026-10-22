@@ -20,7 +20,8 @@ import { CostingReport } from './pages/inventory/CostingReport'
 import { Settings } from './pages/Settings'
 import { ProductionKanban } from './pages/production/ProductionKanban'
 import { CalendarPage } from './pages/CalendarPage'
-import { Dashboard } from './pages/Dashboard' // <--- IMPORTANTE: Importar Dashboard
+import { Dashboard } from './pages/Dashboard' //
+import { Opportunities } from './pages/opportunities/Opportunities'
 
 
 export function App() {
@@ -72,6 +73,7 @@ export function App() {
         <Route path="inventory/costing" element={<CostingReport />} />
         <Route path="settings" element={<Settings />} />
         <Route path="production" element={<ProductionKanban />} />
+        <Route path="opportunities" element={<Opportunities />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

@@ -1,6 +1,7 @@
 # app/api/v1/availability.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from decimal import Decimal
 
 from app.core.database import get_db
 from app.api.deps import get_current_tenant
@@ -21,32 +22,33 @@ def check_single_resource(
     db: Session = Depends(get_db),
     tenant: Tenant = Depends(get_current_tenant),
 ):
-    """
-    Verifica la disponibilidad de un recurso suelto.
-    """
+    """Verifica la disponibilidad de un recurso suelto."""
     try:
         return availability_service.check_availability(
             db=db,
+            tenant=tenant,
             resource_id=request.resource_id,
             required_quantity=request.quantity,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
+
 @router.post("/check-bundle", response_model=BundleAvailabilityResponse)
 def check_bundle(
     request: BundleAvailabilityRequest,
+    season: str | None = None,  # <--- NUEVO
     db: Session = Depends(get_db),
     tenant: Tenant = Depends(get_current_tenant),
 ):
-    """
-    Verifica la disponibilidad de un bundle explotado.
-    """
+    """Verifica la disponibilidad de un bundle multinivel explotado."""
     try:
         return availability_service.check_bundle_availability(
             db=db,
+            tenant=tenant,
             bundle_id=request.bundle_id,
             multiplier=request.multiplier,
+            season=season,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

@@ -28,6 +28,7 @@ class BundleBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
     category_id: UUID | None = None
+    sale_price: Decimal | None = None  # <--- NUEVO
     is_active: bool = True
 
 
@@ -39,6 +40,7 @@ class BundleUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     category_id: UUID | None = None
+    sale_price: Decimal | None = None  # <--- NUEVO
     is_active: bool | None = None
 
 
@@ -77,7 +79,7 @@ class ExplodedComponent(BaseModel):
     resource_id: UUID
     resource_name: str
     resource_unit_symbol: str | None
-    required_quantity: Decimal  # cantidad total requerida (componente × multiplicador)
+    required_quantity: Decimal
     notes: str | None
 
 
@@ -86,6 +88,7 @@ class BundleExplodeResponse(BaseSchema):
     bundle_id: UUID
     bundle_code: str
     bundle_name: str
-    multiplier: Decimal  # cuántas veces se multiplica el bundle
+    multiplier: Decimal
+    season: str | None = None
     total_components: int
     components: list[ExplodedComponent]

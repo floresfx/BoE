@@ -13,6 +13,7 @@ from app.api.v1 import (
     dashboard,
     production,
     movements,
+    opportunities,
     permissions,
     plans,
     profiles,
@@ -69,3 +70,4 @@ api_router.include_router(agenda.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(stock_reservations.router)
 api_router.include_router(reports.router)
+api_router.include_router(opportunities.router)

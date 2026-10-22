@@ -1,9 +1,17 @@
+export type ComponentType = 'resource' | 'bundle'
+
 export interface BundleComponent {
   resource_id: string
   resource_name: string
   resource_unit_symbol: string | null
   quantity: string
   notes: string | null
+  component_type: ComponentType
+  component_bundle_id: string | null
+  component_bundle_name: string | null
+  phase_id: string | null
+  waste_percent: string
+  season: string | null
 }
 
 export interface Bundle {
@@ -12,6 +20,9 @@ export interface Bundle {
   name: string
   description: string | null
   category_id: string | null
+  version: number
+  bundle_type: string
+  sale_price: string | null
   is_active: boolean
   components: BundleComponent[]
   created_at: string
@@ -24,9 +35,14 @@ export interface BundleListResponse {
 }
 
 export interface BundleComponentInline {
-  resource_id: string
+  resource_id?: string
+  component_bundle_id?: string
+  component_type: ComponentType
   quantity: string
+  waste_percent?: string
+  season?: string | null
   notes?: string | null
+  phase_id?: string | null
 }
 
 export interface BundleCreate {
@@ -34,6 +50,8 @@ export interface BundleCreate {
   name: string
   description?: string | null
   category_id?: string | null
+  bundle_type?: string
+  sale_price?: string | null
   is_active?: boolean
   components?: BundleComponentInline[]
 }
@@ -42,6 +60,7 @@ export interface BundleUpdate {
   name?: string
   description?: string | null
   category_id?: string | null
+  sale_price?: string | null
   is_active?: boolean
 }
 
@@ -58,6 +77,7 @@ export interface BundleExplodeResponse {
   bundle_code: string
   bundle_name: string
   multiplier: string
+  season: string | null
   total_components: number
   components: ExplodedComponent[]
 }

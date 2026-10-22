@@ -1,6 +1,11 @@
 from app.models.access_log import AccessLog
 from app.models.base import Base
 from app.models.base_tenant import TenantBase
+
+from app.models.change_log import ChangeLog
+from app.models.exchange_rate import ExchangeRate
+from app.models.global_config import GlobalConfig
+
 from app.models.operational import (
     Bundle,
     BundleComponent,
@@ -25,6 +30,9 @@ from app.models.operational import (
     PRODUCTION_PLAN_STATUSES,
     ProductionOrder,
     PRODUCTION_ORDER_STATUSES,
+    BundlePhase,
+    COMPONENT_TYPES,
+    PlanItemAnnex,
 )
 from app.models.permission import Permission, RolePermission
 from app.models.plan import Plan

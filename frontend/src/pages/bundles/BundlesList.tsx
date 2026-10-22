@@ -101,6 +101,8 @@ export function BundlesList() {
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-slate-700">Código</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-700">Nombre</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-700">Tipo</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-700">Precio Venta</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-700">Componentes</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-700">Estado</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-700">Acciones</th>
@@ -114,6 +116,12 @@ export function BundlesList() {
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-900">
                     {b.name}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 capitalize">
+                    {b.bundle_type}
+                  </td>
+                  <td className="px-4 py-3 text-right text-slate-600">
+                    {b.sale_price ? `$${Number(b.sale_price).toFixed(2)}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     {b.components.length} componente(s)

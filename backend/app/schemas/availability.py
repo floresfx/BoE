@@ -14,7 +14,7 @@ class AvailabilityStatus(str, Enum):
     PARTIAL = "partial"
     OUT_OF_STOCK = "out_of_stock"
 
-
+      
 class WarehouseAvailability(BaseSchema):
     """Desglose de stock por almacén."""
     warehouse_id: UUID

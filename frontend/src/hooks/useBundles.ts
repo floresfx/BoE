@@ -16,7 +16,7 @@ export const bundleKeys = {
 }
 
 export function useBundles(
-  params: { is_active?: boolean; search?: string } = {},
+  params: { is_active?: boolean; search?: string; limit?: number } = {},
 ) {
   return useQuery({
     queryKey: bundleKeys.list(params),
@@ -76,18 +76,30 @@ export function useAddBundleComponent() {
   return useMutation({
     mutationFn: async ({
       bundleId,
+      componentType,
       resourceId,
+      componentBundleId,
       quantity,
+      wastePercent,
+      season,
       notes,
     }: {
       bundleId: string
-      resourceId: string
+      componentType: 'resource' | 'bundle'
+      resourceId?: string
+      componentBundleId?: string
       quantity: string
+      wastePercent?: string
+      season?: string | null
       notes?: string | null
     }) => {
       const { data } = await api.post(`/bundles/${bundleId}/components`, {
-        resource_id: resourceId,
+        component_type: componentType,
+        resource_id: resourceId ?? null,
+        component_bundle_id: componentBundleId ?? null,
         quantity,
+        waste_percent: wastePercent ?? '0',
+        season: season ?? null,
         notes: notes ?? null,
       })
       return data
@@ -103,18 +115,27 @@ export function useUpdateBundleComponent() {
   return useMutation({
     mutationFn: async ({
       bundleId,
+      componentType,
       resourceId,
+      componentBundleId,
       quantity,
+      wastePercent,
+      season,
       notes,
     }: {
       bundleId: string
-      resourceId: string
+      componentType: 'resource' | 'bundle'
+      resourceId?: string
+      componentBundleId?: string
       quantity?: string
+      wastePercent?: string
+      season?: string | null
       notes?: string | null
     }) => {
+      const identifier = componentType === 'resource' ? resourceId : componentBundleId
       const { data } = await api.put(
-        `/bundles/${bundleId}/components/${resourceId}`,
-        { quantity, notes },
+        `/bundles/${bundleId}/components/${identifier}`,
+        { quantity, waste_percent: wastePercent, season, notes },
       )
       return data
     },
@@ -129,12 +150,17 @@ export function useRemoveBundleComponent() {
   return useMutation({
     mutationFn: async ({
       bundleId,
+      componentType,
       resourceId,
+      componentBundleId,
     }: {
       bundleId: string
-      resourceId: string
+      componentType: 'resource' | 'bundle'
+      resourceId?: string
+      componentBundleId?: string
     }) => {
-      await api.delete(`/bundles/${bundleId}/components/${resourceId}`)
+      const identifier = componentType === 'resource' ? resourceId : componentBundleId
+      await api.delete(`/bundles/${bundleId}/components/${identifier}`)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: bundleKeys.all })
@@ -147,14 +173,16 @@ export function useExplodeBundle() {
     mutationFn: async ({
       bundleId,
       multiplier,
+      season,
     }: {
       bundleId: string
       multiplier: string
+      season?: string | null
     }) => {
       const { data } = await api.post<BundleExplodeResponse>(
         `/bundles/${bundleId}/explode`,
         null,
-        { params: { multiplier } },
+        { params: { multiplier, season } },
       )
       return data
     },

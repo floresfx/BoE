@@ -29,6 +29,21 @@ from app.models.operational.production_order import (
     PRODUCTION_ORDER_STATUSES,
 )
 
+from app.models.operational.bundle import (
+    Bundle,
+    BundleComponent,
+    BundlePhase,
+    COMPONENT_TYPES,
+)
+
+from app.models.operational.movement import Movement, MOVEMENT_TYPES
+from app.models.operational.plan_item_annex import PlanItemAnnex
+from app.models.operational.purchase_request import (
+    PurchaseRequest,
+    PurchaseRequestLine,
+    PURCHASE_REQUEST_STATUSES,
+)
+
 __all__ = [
     "Resource",
     "RESOURCE_TYPES",
@@ -53,4 +68,9 @@ __all__ = [
     "PRODUCTION_PLAN_STATUSES",
     "ProductionOrder",
     "PRODUCTION_ORDER_STATUSES",
+    "Bundle",
+    "BundleComponent",
+    "BundlePhase",
+    "COMPONENT_TYPES",
+    "PlanItemAnnex",
 ]

@@ -13,6 +13,7 @@ const navItems = [
   { to: '/inventory/costing', label: 'Costeo', icon: '💰', disabled: false },
   { to: '/suppliers', label: 'Proveedores', icon: '🏭', disabled: false },
   { to: '/bundles', label: 'Paquetes', icon: '📦', disabled: false },
+  { to: '/opportunities', label: 'Oportunidades', icon: '💡', disabled: false },
   { to: '/purchase-requests', label: 'Solicitudes', icon: '📋', disabled: false},
   { to: '/availability', label: 'Disponibilidad', icon: '✅', disabled: false},
   { to: '/calendar', label: 'Calendario', icon: '📅', disabled: false },

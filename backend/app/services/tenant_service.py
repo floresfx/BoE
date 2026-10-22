@@ -156,7 +156,7 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
         )
     """))
 
-    # Bundles
+        # Bundles
     db.execute(text(f"""
         CREATE TABLE IF NOT EXISTS "{schema_name}"."bundles" (
             id UUID PRIMARY KEY,
@@ -164,10 +164,26 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
             name VARCHAR(255) NOT NULL,
             description TEXT,
             category_id UUID,
+            version INTEGER NOT NULL DEFAULT 1,
+            bundle_type VARCHAR(30) NOT NULL DEFAULT 'production',
+            sale_price NUMERIC(12, 2),  -- <--- NUEVO
             is_active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-            UNIQUE (code)
+            UNIQUE (code, version)
+        )
+    """))
+
+    # Bundle Phases
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."bundle_phases" (
+            id UUID PRIMARY KEY,
+            bundle_id UUID NOT NULL REFERENCES "{schema_name}".bundles(id) ON DELETE CASCADE,
+            name VARCHAR(100) NOT NULL,
+            description TEXT,
+            "order" INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
     """))
 
@@ -175,12 +191,17 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
         CREATE TABLE IF NOT EXISTS "{schema_name}"."bundle_components" (
             id UUID PRIMARY KEY,
             bundle_id UUID NOT NULL REFERENCES "{schema_name}".bundles(id) ON DELETE CASCADE,
-            resource_id UUID NOT NULL REFERENCES "{schema_name}".resources(id) ON DELETE CASCADE,
+            component_type VARCHAR(20) NOT NULL DEFAULT 'resource',
+            resource_id UUID REFERENCES "{schema_name}".resources(id) ON DELETE CASCADE,
+            component_bundle_id UUID REFERENCES "{schema_name}".bundles(id) ON DELETE CASCADE,
+            phase_id UUID REFERENCES "{schema_name}".bundle_phases(id) ON DELETE SET NULL,
             quantity NUMERIC(14, 4) NOT NULL,
+            waste_percent NUMERIC(5, 2) NOT NULL DEFAULT 0,
+            season VARCHAR(50),
             notes TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-            UNIQUE (bundle_id, resource_id)
+            UNIQUE (bundle_id, resource_id, component_bundle_id)
         )
     """))
 
@@ -297,7 +318,21 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
         )
     """))
 
-        # Stock Reservations
+    # --- AHORA SÍ: Plan Item Annexes (depende de production_orders) ---
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."plan_item_annexes" (
+            id UUID PRIMARY KEY,
+            production_order_id UUID NOT NULL REFERENCES "{schema_name}".production_orders(id) ON DELETE CASCADE,
+            annex_type VARCHAR(30) NOT NULL,
+            resource_id UUID REFERENCES "{schema_name}".resources(id) ON DELETE SET NULL,
+            quantity NUMERIC(14, 4),
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+
+    # Stock Reservations
     db.execute(text(f"""
         CREATE TABLE IF NOT EXISTS "{schema_name}"."stock_reservations" (
             id UUID PRIMARY KEY,

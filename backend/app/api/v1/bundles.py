@@ -312,6 +312,7 @@ def remove_bundle_component(
 def explode(
     bundle_id: UUID,
     multiplier: Decimal = 1,
+    season: str | None = None,
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ):
@@ -321,7 +322,7 @@ def explode(
     Ejemplo: si el bundle es "lote 100 unidades" y quieres 500 unidades,
     multiplier=5.
     """
-    result = explode_bundle(db, bundle_id, multiplier)
+    result = explode_bundle(db, current_tenant, bundle_id, multiplier, season)
     return BundleExplodeResponse(**result)
 # ---------------------------------------------------------------------------
 # Costos del bundle
@@ -341,6 +342,7 @@ def get_bundle_cost(
     """Calcula el costo total de un bundle."""
     return bundle_cost_service.calculate_bundle_cost(
         db=db,
+        tenant=current_tenant,
         bundle_id=bundle_id,
         multiplier=multiplier,
     )
