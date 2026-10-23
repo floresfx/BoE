@@ -64,6 +64,8 @@ class ProductionOrderResponse(BaseSchema):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+    exception_type: str | None = None
+    exception_notes: str | None = None
 
 
 class ProductionOrderListResponse(BaseSchema):

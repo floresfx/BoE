@@ -23,6 +23,9 @@ PRODUCTION_ORDER_STATUSES = (
     "in_progress",
     "completed",
     "cancelled",
+    "not_executed",
+    "partial",
+    "with_deviation",
 )
 
 
@@ -60,6 +63,11 @@ class ProductionOrder(TenantBase, UUIDMixin, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    exception_type: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )
+    exception_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relaciones
     plan = relationship("ProductionPlan", back_populates="orders")

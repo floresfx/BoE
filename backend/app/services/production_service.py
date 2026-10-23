@@ -175,3 +175,92 @@ def complete_production(
     db.flush()
     db.refresh(order)
     return order
+
+def mark_exception(
+    db: Session,
+    tenant: Tenant,
+    order_id: UUID,
+    exception_type: str,
+    notes: str | None = None,
+    actual_quantity: Decimal | None = None,
+) -> dict:
+    """Marca una orden de producción con una excepción.
+
+    Tipos:
+    - not_executed: no se ejecutó. Se repone todo el material preparado.
+    - partial: se ejecutó parcialmente. Se repone el material no consumido.
+    - with_deviation: se ejecutó con desviación. Se registra la cantidad real.
+    """
+    _set_tenant_schema(db, tenant)
+
+    if exception_type not in ("not_executed", "partial", "with_deviation"):
+        raise HTTPException(400, f"Tipo de excepción inválido: {exception_type}")
+
+    order = (
+        db.query(ProductionOrder)
+        .filter(ProductionOrder.id == order_id)
+        .first()
+    )
+    if not order:
+        raise HTTPException(404, "Orden de producción no encontrada")
+
+    if order.status not in ("in_progress", "planned"):
+        raise HTTPException(
+            400,
+            f"No se puede marcar excepción en estado {order.status}",
+        )
+
+    # Mapear tipo de excepción a estado
+    status_map = {
+        "not_executed": "not_executed",
+        "partial": "partial",
+        "with_deviation": "with_deviation",
+    }
+    order.status = status_map[exception_type]
+    order.exception_type = exception_type
+    order.exception_notes = notes
+    order.end_date = datetime.now(timezone.utc)
+
+    restored_quantity = Decimal("0")
+
+    # Si es 'not_executed', reponer todo el material
+    if exception_type == "not_executed":
+        bundle = db.query(Bundle).filter(Bundle.id == order.bundle_id).first()
+        if bundle:
+            components = (
+                db.query(BundleComponent)
+                .filter(BundleComponent.bundle_id == bundle.id)
+                .all()
+            )
+            warehouse = (
+                db.query(Warehouse).filter(Warehouse.is_active == True).first()
+            )
+            if warehouse:
+                for comp in components:
+                    qty_to_restore = comp.quantity * order.quantity
+                    if qty_to_restore > 0:
+                        register_movement(
+                            db=db,
+                            warehouse_id=warehouse.id,
+                            resource_id=comp.resource_id,
+                            lot_code=f"RESTORE-{order.code}",
+                            movement_type="in",
+                            quantity=qty_to_restore,
+                            unit_cost=None,
+                            expiration=None,
+                            reference=f"Reposición {order.code}",
+                            notes=f"Reposición por no ejecución de orden {order.code}",
+                            created_by=None,
+                        )
+                        restored_quantity += qty_to_restore
+
+    db.flush()
+    db.refresh(order)
+
+    return {
+        "order_id": order.id,
+        "order_code": order.code,
+        "exception_type": exception_type,
+        "message": f"Orden {order.code} marcada como {exception_type}.",
+        "restored_quantity": restored_quantity,
+    }

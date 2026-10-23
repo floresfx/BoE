@@ -32,6 +32,12 @@ from app.services.production_service import (
     start_production,
 )
 
+from app.schemas.production_exception import (
+    ProductionOrderExceptionRequest,
+    ProductionOrderExceptionResponse,
+)
+from app.services.production_service import mark_exception
+
 router = APIRouter(prefix="/production", tags=["production"])
 
 
@@ -270,4 +276,30 @@ def update_order_status(
         notes=order.notes,
         created_at=order.created_at,
         updated_at=order.updated_at,
+    )
+
+@router.post(
+    "/orders/{order_id}/exception",
+    response_model=ProductionOrderExceptionResponse,
+    dependencies=[Depends(require_permission("production", "editar"))],
+)
+def mark_order_exception(
+    order_id: UUID,
+    data: ProductionOrderExceptionRequest,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Marca una orden de producción con una excepción.
+
+    - not_executed: no se ejecutó. Se repone todo el material.
+    - partial: se ejecutó parcialmente. Se repone el material no consumido.
+    - with_deviation: se ejecutó con desviación. Se registra la cantidad real.
+    """
+    return mark_exception(
+        db=db,
+        tenant=current_tenant,
+        order_id=order_id,
+        exception_type=data.exception_type,
+        notes=data.notes,
+        actual_quantity=data.actual_quantity,
     )

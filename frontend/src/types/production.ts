@@ -29,18 +29,20 @@ export interface ProductionPlanListResponse {
 }
 
 export interface ProductionOrder {
-  id: string
+ id: string
   code: string
   plan_id: string | null
   bundle_id: string
   bundle_name: string
   quantity: string
-  status: ProductionOrderStatus
+  status: ProductionOrderStatus | 'not_executed' | 'partial' | 'with_deviation' // Ampliamos el tipo
   start_date: string | null
   end_date: string | null
   notes: string | null
   created_at: string
   updated_at: string
+  exception_type?: 'not_executed' | 'partial' | 'with_deviation' | null
+  exception_notes?: string | null
 }
 
 export interface ProductionOrderListResponse {

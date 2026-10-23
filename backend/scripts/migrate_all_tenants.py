@@ -100,6 +100,14 @@ TENANT_MIGRATIONS = [
         ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ;
         """,
     ),
+    (
+        "production_orders: add exception_type and exception_notes",
+        """
+        ALTER TABLE "{schema}"."production_orders"
+        ADD COLUMN IF NOT EXISTS exception_type VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS exception_notes TEXT;
+        """,
+    ),
     # --- Purchase Request Lines ---
     (
         "purchase_request_lines: quantity_received",

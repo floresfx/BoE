@@ -300,7 +300,7 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
         )
     """))
 
-    # Production Orders
+     # Production Orders (actualizado con exception_type y exception_notes)
     db.execute(text(f"""
         CREATE TABLE IF NOT EXISTS "{schema_name}"."production_orders" (
             id UUID PRIMARY KEY,
@@ -312,6 +312,8 @@ def create_tenant_schema(db: Session, schema_name: str) -> None:
             start_date TIMESTAMPTZ,
             end_date TIMESTAMPTZ,
             notes TEXT,
+            exception_type VARCHAR(20),
+            exception_notes TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             UNIQUE (code)
