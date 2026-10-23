@@ -15,6 +15,7 @@ const navItems = [
   { to: '/bundles', label: 'Paquetes', icon: '📦', disabled: false },
   { to: '/opportunities', label: 'Oportunidades', icon: '💡', disabled: false },
   { to: '/purchase-requests', label: 'Solicitudes', icon: '📋', disabled: false},
+  { to: '/purchase-orders', label: 'Órdenes de Compra', icon: '📦', disabled: false },
   { to: '/availability', label: 'Disponibilidad', icon: '✅', disabled: false},
   { to: '/calendar', label: 'Calendario', icon: '📅', disabled: false },
   { to: '/settings', label: 'Configuración', icon: '⚙️', disabled: false},

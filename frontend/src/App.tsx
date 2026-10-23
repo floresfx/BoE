@@ -22,6 +22,7 @@ import { ProductionKanban } from './pages/production/ProductionKanban'
 import { CalendarPage } from './pages/CalendarPage'
 import { Dashboard } from './pages/Dashboard' //
 import { Opportunities } from './pages/opportunities/Opportunities'
+import { PurchaseOrdersList } from './pages/purchase_orders/PurchaseOrdersList'
 
 
 export function App() {
@@ -73,6 +74,7 @@ export function App() {
         <Route path="inventory/costing" element={<CostingReport />} />
         <Route path="settings" element={<Settings />} />
         <Route path="production" element={<ProductionKanban />} />
+        <Route path="purchase-orders" element={<PurchaseOrdersList />} />
         <Route path="opportunities" element={<Opportunities />} />
         <Route path="*" element={<NotFound />} />
       </Route>

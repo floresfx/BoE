@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
@@ -14,7 +15,6 @@ import type {
 } from '../../types/purchase_request'
 import { PURCHASE_REQUEST_STATUSES } from '../../types/purchase_request'
 import { ConfirmDialog } from '../resources/ConfirmDialog'
-import { PurchaseRequestDetailModal } from './PurchaseRequestDetailModal'
 import { PurchaseRequestForm } from './PurchaseRequestForm'
 import { PurchaseRequestFromBundleModal } from './PurchaseRequestFromBundleModal'
 import { Can } from '../../components/auth/Can'
@@ -31,11 +31,11 @@ const statusBadge = (s: PurchaseRequestStatus) => {
 }
 
 export function PurchaseRequestsList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<PurchaseRequestStatus | ''>('')
   const [formOpen, setFormOpen] = useState(false)
   const [fromBundleOpen, setFromBundleOpen] = useState(false)
-  const [viewingId, setViewingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<PurchaseRequest | null>(null)
 
   const { data, isLoading, error } = usePurchaseRequests({
@@ -83,11 +83,11 @@ export function PurchaseRequestsList() {
           </p>
         </div>
         <div className="space-x-2">
-         <Can module="purchase_request" action="crear">
-          <Button variant="secondary" onClick={() => setFromBundleOpen(true)}>
-            + Desde paquete
-          </Button>
-        </Can>
+          <Can module="purchase_request" action="crear">
+            <Button variant="secondary" onClick={() => setFromBundleOpen(true)}>
+              + Desde paquete
+            </Button>
+          </Can>
           <Can module="purchase_request" action="crear">
             <Button onClick={() => setFormOpen(true)}>+ Nueva solicitud</Button>
           </Can>
@@ -167,66 +167,66 @@ export function PurchaseRequestsList() {
                     {new Date(r.created_at).toLocaleDateString('es-ES')}
                   </td>
                   <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-                  <Can module="purchase_request" action="ver">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setViewingId(r.id)}
-                    >
-                      Ver
-                    </Button>
-                  </Can>
-                  {r.status === 'draft' && (
-                    <Can module="purchase_request" action="editar">
+                    <Can module="purchase_request" action="ver">
                       <Button
                         size="sm"
-                        onClick={() => handleStatusChange(r, 'pending')}
+                        variant="secondary"
+                        onClick={() => navigate(`/purchase-requests/${r.id}`)}
                       >
-                        Enviar
+                        Ver
                       </Button>
                     </Can>
-                  )}
-                  {r.status === 'pending' && (
-                    <>
+                    {r.status === 'draft' && (
+                      <Can module="purchase_request" action="editar">
+                        <Button
+                          size="sm"
+                          onClick={() => handleStatusChange(r, 'pending')}
+                        >
+                          Enviar
+                        </Button>
+                      </Can>
+                    )}
+                    {r.status === 'pending' && (
+                      <>
+                        <Can module="purchase_request" action="aprobar">
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusChange(r, 'approved')}
+                          >
+                            Aprobar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => handleStatusChange(r, 'cancelled')}
+                          >
+                            Rechazar
+                          </Button>
+                        </Can>
+                      </>
+                    )}
+                    {r.status === 'approved' && (
                       <Can module="purchase_request" action="aprobar">
                         <Button
                           size="sm"
-                          onClick={() => handleStatusChange(r, 'approved')}
+                          onClick={() => handleStatusChange(r, 'completed')}
                         >
-                          Aprobar
+                          Completar
                         </Button>
+                      </Can>
+                    )}
+                    {r.status === 'draft' && (
+                      <Can module="purchase_request" action="eliminar">
                         <Button
                           size="sm"
                           variant="danger"
-                          onClick={() => handleStatusChange(r, 'cancelled')}
+                          onClick={() => setDeleting(r)}
                         >
-                          Rechazar
+                          Borrar
                         </Button>
                       </Can>
-                    </>
-                  )}
-                  {r.status === 'approved' && (
-                    <Can module="purchase_request" action="aprobar">
-                      <Button
-                        size="sm"
-                        onClick={() => handleStatusChange(r, 'completed')}
-                      >
-                        Completar
-                      </Button>
-                    </Can>
-                  )}
-                  {r.status === 'draft' && (
-                    <Can module="purchase_request" action="eliminar">
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => setDeleting(r)}
-                      >
-                        Borrar
-                      </Button>
-                    </Can>
-                  )}
-                </td>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -246,12 +246,6 @@ export function PurchaseRequestsList() {
       <PurchaseRequestFromBundleModal
         open={fromBundleOpen}
         onClose={() => setFromBundleOpen(false)}
-      />
-
-      <PurchaseRequestDetailModal
-        open={Boolean(viewingId)}
-        requestId={viewingId}
-        onClose={() => setViewingId(null)}
       />
 
       <ConfirmDialog

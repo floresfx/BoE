@@ -279,8 +279,8 @@ def create_from_bundle(
     Cada componente del bundle se convierte en una línea de la solicitud.
     """
     _set_tenant_schema(db, current_tenant)
-    exploded = explode_bundle(db, data.bundle_id, data.multiplier)
-
+    exploded = explode_bundle(db, current_tenant, data.bundle_id, data.multiplier)
+    _set_tenant_schema(db, current_tenant)
     code = data.code or _generate_code(db)
     existing = db.query(PurchaseRequest).filter(PurchaseRequest.code == code).first()
     if existing:

@@ -15,7 +15,7 @@ export const supplierKeys = {
 }
 
 export function useSuppliers(
-  params: { is_active?: boolean; search?: string } = {},
+  params: { is_active?: boolean; search?: string; limit?: number } = {},
 ) {
   return useQuery({
     queryKey: supplierKeys.list(params),

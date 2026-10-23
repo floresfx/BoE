@@ -18,6 +18,7 @@ from app.api.v1 import (
     plans,
     profiles,
     purchase_requests,
+    purchase_orders,
     register,
     resources,
     resource_attributes,
@@ -71,3 +72,4 @@ api_router.include_router(dashboard.router)
 api_router.include_router(stock_reservations.router)
 api_router.include_router(reports.router)
 api_router.include_router(opportunities.router)
+api_router.include_router(purchase_orders.router)

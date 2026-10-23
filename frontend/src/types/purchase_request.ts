@@ -33,6 +33,7 @@ export interface PurchaseRequestLine {
   resource_name: string
   quantity: string
   quantity_received: string
+  status: PurchaseRequestStatus
   supplier_id: string | null
   supplier_name: string | null
   notes: string | null
@@ -97,7 +98,7 @@ export interface SupplierQuote {
   lead_time_days: number
   valid_until: string | null
   notes: string | null
-  status: SupplierQuoteStatus
+  status: string
   is_selected: boolean
   created_at: string
   updated_at: string
@@ -160,4 +161,46 @@ export interface ReceiveResponse {
   new_status: string
   lines: ReceiveLineResponse[]
   message: string
+}
+
+// --- Tipos para cotizaciones ---
+
+export interface SupplierQuote {
+  id: string
+  request_id: string
+  line_id: string
+  supplier_id: string
+  supplier_name: string
+  unit_price: string
+  currency_code: string
+  lead_time_days: number
+  valid_until: string | null
+  notes: string | null
+  status: string
+  is_selected: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface SupplierQuoteListResponse {
+  items: SupplierQuote[]
+  total: number
+}
+
+export interface SupplierQuoteCreate {
+  line_id: string
+  supplier_id: string
+  unit_price: string
+  currency_code?: string
+  lead_time_days?: number
+  valid_until?: string | null
+  notes?: string | null
+}
+
+export interface SupplierQuoteUpdate {
+  unit_price?: string
+  currency_code?: string
+  lead_time_days?: number
+  valid_until?: string | null
+  notes?: string | null
 }
