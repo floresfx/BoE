@@ -7,6 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.schemas.common import BaseSchema
+# Importamos la respuesta de anexos arriba para evitar el NameError
+from app.schemas.production_annex import PlanItemAnnexResponse 
 
 
 # --- Production Plans ---
@@ -66,6 +68,7 @@ class ProductionOrderResponse(BaseSchema):
     updated_at: datetime
     exception_type: str | None = None
     exception_notes: str | None = None
+    annexes: list[PlanItemAnnexResponse] = []
 
 
 class ProductionOrderListResponse(BaseSchema):

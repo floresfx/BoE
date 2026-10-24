@@ -167,7 +167,7 @@ TENANT_MIGRATIONS = [
         "plan_item_annexes: table",
         """
         CREATE TABLE IF NOT EXISTS "{schema}"."plan_item_annexes" (
-            id UUID PRIMARY KEY,
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             production_order_id UUID NOT NULL REFERENCES "{schema}"."production_orders"(id) ON DELETE CASCADE,
             annex_type VARCHAR(30) NOT NULL,
             resource_id UUID REFERENCES "{schema}"."resources"(id) ON DELETE SET NULL,

@@ -10,10 +10,11 @@ import type { ProductionOrder } from '../../types/production'
 interface Props {
   order: ProductionOrder
   onMarkException: () => void
-  onArchive: (orderId: string) => void // <-- ¡AQUÍ ESTABA EL ERROR QUE FALTABA!
+  onArchive: (orderId: string) => void
+  onAddAnnex: () => void
 }
 
-export function ProductionOrderCard({ order, onMarkException, onArchive }: Props) {
+export function ProductionOrderCard({ order, onMarkException, onArchive, onAddAnnex }: Props) {
   const startMutation = useStartProductionOrder()
   const completeMutation = useCompleteProductionOrder()
   const updateStatusMutation = useUpdateProductionOrderStatus()
@@ -66,7 +67,7 @@ export function ProductionOrderCard({ order, onMarkException, onArchive }: Props
   }  
 
   // Si la orden ya terminó su ciclo (completada, cancelada o con excepción)
-  const isFinished = order.status === 'completed' || order.status === 'cancelled' || !!order.exception_type
+  const isFinished = order.status === 'completed' || order.status === 'cancelled' ||  ['not_executed', 'partial', 'with_deviation'].includes(order.status) || !!order.exception_type
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-3 space-y-2">
@@ -100,9 +101,24 @@ export function ProductionOrderCard({ order, onMarkException, onArchive }: Props
         <p className="text-xs text-slate-600 italic">{order.notes}</p>
       )}
 
+      {/* NUEVO: Listado de Anexos */}
+      {order.annexes && order.annexes.length > 0 && (
+        <div className="mt-2 text-xs bg-blue-50 border border-blue-100 rounded p-2 space-y-1">
+          <p className="font-semibold text-blue-800">Anexos:</p>
+          {order.annexes.map((annex) => (
+            <p key={annex.id} className="text-blue-700">
+              • {annex.annex_type === 'quantity_adjustment' ? 'Ajuste cant.' : 
+                 annex.annex_type === 'extra_resource' ? 'Insumo extra' : 'Otro'} 
+              {annex.quantity ? ` (+${annex.quantity})` : ''}
+              {annex.notes ? ` - ${annex.notes}` : ''}
+            </p>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 justify-end pt-2 border-t border-slate-100">
         
-        {/* NUEVO BOTÓN DE ARCHIVAR */}
+         {/* NUEVO BOTÓN DE ARCHIVAR */}
         {isFinished && (
           <Button
             size="sm"
@@ -135,6 +151,7 @@ export function ProductionOrderCard({ order, onMarkException, onArchive }: Props
             Planificar
           </Button>
         )}
+        
         {(order.status === 'draft' || order.status === 'planned') && (
           <Button
             size="sm"
@@ -144,15 +161,28 @@ export function ProductionOrderCard({ order, onMarkException, onArchive }: Props
             {startMutation.isPending ? 'Iniciando...' : 'Iniciar'}
           </Button>
         )}
+
+        {/* BOTONES DE EN PROGRESO (Anexo y Completar) */}
         {order.status === 'in_progress' && (
-          <Button
-            size="sm"
-            onClick={handleComplete}
-            disabled={isBusy}
-          >
-            {completeMutation.isPending ? 'Completando...' : 'Completar'}
-          </Button>
+          <>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={onAddAnnex}
+              disabled={isBusy}
+            >
+              + Anexo
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleComplete}
+              disabled={isBusy}
+            >
+              {completeMutation.isPending ? 'Completando...' : 'Completar'}
+            </Button>
+          </>
         )}
+
       </div>
     </div>
   )

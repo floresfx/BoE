@@ -72,3 +72,4 @@ class ProductionOrder(TenantBase, UUIDMixin, TimestampMixin):
     # Relaciones
     plan = relationship("ProductionPlan", back_populates="orders")
     bundle = relationship("Bundle")
+    annexes = relationship("PlanItemAnnex", back_populates="production_order")

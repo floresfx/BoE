@@ -38,6 +38,9 @@ from app.schemas.production_exception import (
 )
 from app.services.production_service import mark_exception
 
+from app.schemas.production_annex import PlanItemAnnexCreate, PlanItemAnnexResponse
+from app.services.production_service import add_annex
+
 router = APIRouter(prefix="/production", tags=["production"])
 
 
@@ -129,6 +132,7 @@ def list_orders(
                 notes=o.notes,
                 created_at=o.created_at,
                 updated_at=o.updated_at,
+                annexes=o.annexes,
             )
         )
     return ProductionOrderListResponse(items=result, total=len(result))
@@ -302,4 +306,26 @@ def mark_order_exception(
         exception_type=data.exception_type,
         notes=data.notes,
         actual_quantity=data.actual_quantity,
+    )
+
+@router.post(
+    "/orders/{order_id}/annexes",
+    response_model=PlanItemAnnexResponse,
+    dependencies=[Depends(require_permission("production", "editar"))],
+)
+def create_order_annex(
+    order_id: UUID,
+    data: PlanItemAnnexCreate,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Registra un anexo (ajuste, insumo extra, etc.) en una orden en progreso."""
+    return add_annex(
+        db=db,
+        tenant=current_tenant,
+        order_id=order_id,
+        annex_type=data.annex_type,
+        resource_id=data.resource_id,
+        quantity=data.quantity,
+        notes=data.notes,
     )

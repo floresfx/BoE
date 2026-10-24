@@ -28,14 +28,25 @@ export interface ProductionPlanListResponse {
   total: number
 }
 
+export interface PlanItemAnnex {
+  id: string
+  production_order_id: string
+  annex_type: string
+  resource_id: string | null
+  resource_name: string | null
+  quantity: string | null
+  notes: string | null
+}
+
 export interface ProductionOrder {
- id: string
+  id: string
   code: string
   plan_id: string | null
   bundle_id: string
   bundle_name: string
   quantity: string
-  status: ProductionOrderStatus | 'not_executed' | 'partial' | 'with_deviation' // Ampliamos el tipo
+  // Añadimos los estados de excepción aquí:
+  status: 'draft' | 'planned' | 'in_progress' | 'completed' | 'cancelled' | 'not_executed' | 'partial' | 'with_deviation'
   start_date: string | null
   end_date: string | null
   notes: string | null
@@ -43,6 +54,7 @@ export interface ProductionOrder {
   updated_at: string
   exception_type?: 'not_executed' | 'partial' | 'with_deviation' | null
   exception_notes?: string | null
+  annexes?: PlanItemAnnex[] 
 }
 
 export interface ProductionOrderListResponse {

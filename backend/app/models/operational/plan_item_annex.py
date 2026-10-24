@@ -27,5 +27,6 @@ class PlanItemAnnex(TenantBase, UUIDMixin, TimestampMixin):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    production_order = relationship("ProductionOrder")
+
+    production_order = relationship("ProductionOrder", back_populates="annexes")
     resource = relationship("Resource")

@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.models import (
     Bundle,
@@ -19,6 +20,7 @@ from app.models import (
     Warehouse,
 )
 from app.services.inventory_service import register_movement
+from app.models.operational.plan_item_annex import PlanItemAnnex
 
 
 def _set_tenant_schema(db: Session, tenant: Tenant) -> None:
@@ -123,13 +125,15 @@ def complete_production(
 
         # Verificar stock disponible en el warehouse
         total_stock = (
-            db.query(StockLot.quantity)
+            db.query(func.coalesce(func.sum(StockLot.quantity), 0))
             .filter(StockLot.resource_id == comp.resource_id)
             .filter(StockLot.warehouse_id == warehouse.id)
             .scalar()
-        ) or Decimal("0")
+        )
+        total_stock = Decimal(str(total_stock))
 
         if total_stock < qty_needed:
+            resource_name = comp.resource.name if comp.resource else "Recurso desconocido"
             raise HTTPException(
                 400,
                 f"Stock insuficiente para el recurso {comp.resource_id}. "
@@ -253,6 +257,57 @@ def mark_exception(
                             created_by=None,
                         )
                         restored_quantity += qty_to_restore
+
+def add_annex(
+    db: Session,
+    tenant: Tenant,
+    order_id: UUID,
+    annex_type: str,
+    resource_id: UUID | None = None,
+    quantity: Decimal | None = None,
+    notes: str | None = None,
+) -> dict:
+    """Registra un anexo en una orden de producción en progreso."""
+    _set_tenant_schema(db, tenant)
+
+    order = db.query(ProductionOrder).filter(ProductionOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(404, "Orden de producción no encontrada")
+
+    if order.status != "in_progress":
+        raise HTTPException(
+            400,
+            f"Solo se pueden añadir anexos a órdenes en progreso. Estado actual: {order.status}",
+        )
+
+    # Crear el anexo
+    annex = PlanItemAnnex(
+        production_order_id=order.id,
+        annex_type=annex_type,
+        resource_id=resource_id,
+        quantity=quantity,
+        notes=notes,
+    )
+    db.add(annex)
+    db.flush()
+    db.refresh(annex)
+
+    # Preparamos la respuesta para el frontend (buscando el nombre del recurso)
+    resource_name = None
+    if annex.resource_id:
+        res = db.query(Resource).filter(Resource.id == annex.resource_id).first()
+        if res:
+            resource_name = res.name
+
+    return {
+        "id": annex.id,
+        "production_order_id": annex.production_order_id,
+        "annex_type": annex.annex_type,
+        "resource_id": annex.resource_id,
+        "resource_name": resource_name,
+        "quantity": annex.quantity,
+        "notes": annex.notes,
+    }
 
     db.flush()
     db.refresh(order)

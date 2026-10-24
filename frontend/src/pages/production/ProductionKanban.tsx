@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '../../components/ui/Button'
 import { ProductionOrderCard } from './ProductionOrderCard'
 import { NewProductionOrderModal } from './NewProductionOrderModal'
 import { useProductionOrders } from '../../hooks/useProduction'
 import type { ProductionOrder } from '../../types/production'
 import { MarkExceptionModal } from './MarkExceptionModal'
+import { CreateAnnexModal } from './CreateAnnexModal'
 
 interface Column {
   status: string 
@@ -24,6 +25,7 @@ export function ProductionKanban() {
   const { data, isLoading, error } = useProductionOrders()
   const [modalOpen, setModalOpen] = useState(false)
   const [orderToExcept, setOrderToExcept] = useState<ProductionOrder | null>(null)
+  const [orderToAnnex, setOrderToAnnex] = useState<ProductionOrder | null>(null)
 
   // --- LÓGICA DE ARCHIVADO (localStorage) ---
   const [archivedIds, setArchivedIds] = useState<string[]>(() => {
@@ -93,6 +95,17 @@ export function ProductionKanban() {
               <div key={column.status} className={`rounded-lg p-3 ${column.color} min-h-[200px]`}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-slate-900 text-sm">{column.label}</h3>
+                  {column.status === 'cancelled' && columnOrders.length > 0 && (
+                      <button 
+                        onClick={() => {
+                          columnOrders.forEach(o => handleArchive(o.id));
+                        }}
+                        className="text-[10px] text-red-600 hover:underline"
+                        title="Archivar todas"
+                      >
+                        Limpiar
+                      </button>
+                    )}
                   <span className="text-xs bg-white/60 px-2 py-0.5 rounded-full">{columnOrders.length}</span>
                 </div>
                 <div className="space-y-2">
@@ -105,6 +118,7 @@ export function ProductionKanban() {
                         order={order} 
                         onMarkException={() => setOrderToExcept(order)}
                         onArchive={handleArchive} // <-- Pasamos la función
+                        onAddAnnex={() => setOrderToAnnex(order)} 
                       />
                     ))
                   )}
@@ -181,6 +195,13 @@ export function ProductionKanban() {
 
       <NewProductionOrderModal open={modalOpen} onClose={() => setModalOpen(false)} />
       <MarkExceptionModal open={!!orderToExcept} onClose={() => setOrderToExcept(null)} order={orderToExcept} />
+        {/* AQUÍ VA EL MODAL DE ANEXOS */}
+      
+      <CreateAnnexModal
+        open={!!orderToAnnex}
+        onClose={() => setOrderToAnnex(null)}
+        order={orderToAnnex}
+      />
     </div>
   )
 }
