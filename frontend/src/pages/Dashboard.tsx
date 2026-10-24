@@ -6,6 +6,11 @@ import { useResources } from '../hooks/useResources'
 import { useDashboardSummary } from '../hooks/useDashboard' // <--- NUEVO
 import { Link } from 'react-router-dom'
 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+  LineChart, Line
+} from 'recharts';
+
 export function Dashboard() {
   const { user } = useAuth()
   const { data: sub, isLoading: loadingSub } = useCurrentSubscription()
@@ -168,6 +173,62 @@ export function Dashboard() {
               </p>
               <p className="text-xs text-slate-400 mt-1">Lotes que vencen en 30 días</p>
             </div>
+
+            {/* --- NUEVOS GRÁFICOS (Recharts) --- */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              
+              {/* Gráfico 1: Margen por Bundle */}
+              <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+                <h3 className="text-md font-semibold text-slate-900 mb-4">Margen Estimado por Paquete (Top 5)</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={summary?.bundle_margins || []} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <RechartsTooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
+                      <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Margen ($)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Gráfico 2: Top Proveedores */}
+              <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+                <h3 className="text-md font-semibold text-slate-900 mb-4">Top Proveedores (por Ofertas)</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={summary?.top_suppliers || []} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 12 }} />
+                      <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} width={100} />
+                      <RechartsTooltip />
+                      <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} name="Cant. Ofertas" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Gráfico 3: Rotación de Inventario */}
+              <div className="bg-white rounded-lg shadow p-6 border border-slate-200 lg:col-span-2">
+                <h3 className="text-md font-semibold text-slate-900 mb-4">Rotación de Inventario (Últimos 6 meses)</h3>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={summary?.inventory_rotation || []} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <RechartsTooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 8 }} name="Movimientos" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+            </div>
+
+
           </div>
         )}
       </div>
